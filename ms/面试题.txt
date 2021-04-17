@@ -1,0 +1,312 @@
+第一部分：求职过程
+第1章 面试求职
+1.1 面试渠道
+1.2 面试流程
+1.3 简历
+1.4 面试心态
+第2章 职业生涯
+2.1 缺乏经验的应届生
+2.2 职场
+2.3 跳槽
+2.4 发展规划
+第二部分：Java语言
+第三章	基础叩关
+3.1	数据结构与算法
+3.1.1	常用的数据结构有哪些?
+3.1.2	数组
+如何在一个1到100的整数数组中找到丢失的数字?
+如何在给定的整数数组中找到重复的数字?    小米
+如何在未排序整数数组中找到最大值和最小值?  字节跳动
+在Java中如何从给定数组中删除多重复制? 
+大数相加(今日头条)
+*求矩阵中连续1的个数 Number of Islands**
+      https://blog.csdn.net/weixin_33941350/article/details/91521633
+给定一个存放整数的数组，重新排列数组使得数组左边为奇数，右边为偶数。
+要求：空间复杂度O(1)，时间复杂度为O（n）。 百度
+3.1.3	链表
+一个数组插入删除查找和链表的效率对比？如果一个数组要反复插入删除怎么优化降低时间复杂度？（一开始没想到，面试官提示其实就是垃圾回收的算法 原理就是“标记-查找”。每次删除的时候元素不是真的被删除了，而是先标记，最后统一移动数组元素，减少移动次数）  腾讯
+ArrayList查询第一个跟最后一个复杂度一样么？（我说一样）
+那LinkedList查询第一个跟最后一个复杂度一样么？（我说不一样，因为链表是从头往后查，只有前一个才能记录后一个的位置）
+你确定么？ （想了下，LinkedList 是双向的，查询第一个跟最后一个是一样的）
+那查询第一个跟倒数第二个呢？（这就不一样了，第一个直接给了头结点，倒数第二个需要从倒数第一个开始查询，走两步）  腾讯
+arrayList底层原理 滴滴 字节跳动
+如何在一次遍历中找到单个链表的中值?  中国平安 
+如何证明给定的链表是否包含循环?如何找到循环的头节点? 优酷
+两个有交叉的单链表，求交叉点  华为
+如何得到单链表的长度?   360
+如何在不使用递归的情况下逆转单链表? 小米/美团
+怎么判断链表有环？ 滴滴
+合并单链表 字节跳动/美团
+https://leetcode-cn.com/problems/merge-two-sorted-lists 
+说明：https://blog.csdn.net/qq_21201267/article/details/100056931
+如何找链表倒数第n个元素？快慢指针  腾讯
+链表的反转 快手
+
+3.1.4 队列&堆栈
+如何使用栈实现队列的功能？(广州荔枝FM)
+两个栈实现一个队列  蘑菇街
+两个队列实现一个栈 腾讯
+对比一下队列和栈，以及它们底部实现 腾讯
+3.1.5	二叉树
+https://blog.csdn.net/qq_36903042/article/details/100798101
+如何在给定的二叉树中执行先序遍历?百度
+如何实现后序遍历算法? 百度
+如何在给定数组中执行二分法搜索? 苏宁
+已知前序遍历为{1,2,4,7,3,5,6,8}，中序遍历为{4,7,2,1,5,3,8,6}，它的二叉树是怎么样的？ 58
+输入两棵二叉树 A 和 B，判断 B 是不是 A 的子结构。 爱奇艺
+请实现两个函数，分别用来序列化二叉树和反序列化二叉树。 YY
+平衡二叉树和红黑树的区别？字节跳动 
+什么是平衡二叉树，它有什么特征 美团
+B 树，B+树
+
+3.1.6	HashMap
+https://www.cnblogs.com/zengcongcong/p/11295349.html
+HashMap的底层原理是什么？线程安全么？ 百度 美团
+HashMap中put是如何实现的？   滴滴
+谈一下hashMap中什么时候需要进行扩容，扩容resize()又是如何实现的？
+什么是哈希碰撞？怎么解决?   滴滴 美团
+HashMap和HashTable的区别  小米
+HashMap中什么时候需要进行扩容，扩容resize()是如何实现的？ 滴滴
+hashmap concurrenthashmap原理  美团
+arraylist和hashmap的区别，为什么取数快？字节跳动
+3.1.7图
+  1.旋转输出矩阵
+  2.给定一个矩阵 int matrixA[m][n],每行每列都是增序的，实现一个算法去寻找矩阵中的某个元素 element. 搜狗
+  https://blog.csdn.net/v_july_v/article/details/7085669
+3.1.8排序算法有哪些？
+top-k排序(堆排序，位图法) 美团
+冒泡排序的手写  华捷艾米
+堆排序算法的手写  华捷艾米
+椭圆形场地有两个赛道，可以同时提供两匹马比赛，两匹马比赛后，可以获知两匹马中跑的快的那匹马，但是没有计时工具。问题，如何最优的算法(比赛次数最少)，获知10匹马中速度最快的三匹马 阿里
+输入一个整型无序数组，对堆排序的方法使得数组有序  阿里
+如何使用快速排序算法对整数数组进行排序?  CVTE
+3.1.9 查找算法
+  1.有序数组的二分查找算法 百度
+3.1.10 串
+给定一个字符串，请你找出其中不含有重复字符的 最长子串的长度。 字节跳动
+https://leetcode-cn.com/problems/longest-substring-without-repeating-characters/
+给定一个字符串 s，找到 s 中最长的回文子串。你可以假设 s 的最大长度为 1000。
+https://leetcode-cn.com/problems/longest-palindromic-substring/
+给定一个只包括 '('，')'，'{'，'}'，'['，']' 的字符串，判断字符串是否有效。
+https://leetcode-cn.com/problems/valid-parentheses/
+有效字符串需满足：
+	左括号必须用相同类型的右括号闭合。
+​	左括号必须以正确的顺序闭合。
+逆转一个句子中的单词?
+编写一个函数来查找字符串数组中的最长公共前缀。
+https://leetcode-cn.com/problems/longest-common-prefix/
+字符串匹配，t1 [a,b,c] ,t2 :'abcdeadda' 滑动窗口 字节跳动
+将两个字符串表示二进制书想加，输出对应和的二进制数   字节
+3.1.11	请写出以下算法的时间复杂度
+            冒泡排序法 插入排序法 堆排序法 二叉树排序法
+3.1.12 其他算法
+常用的对称加密算法，有什么同？ 字节跳动
+如何在无序（有负数）的数组中查找是否存在和为target的两个数组合，twoSum(); 字节
+
+
+
+3.2 Java基础
+什么情况下会发生栈内存溢出？
+如果让你写一段栈溢出的代码你会什么写，一个栈大概有多大，为什么？每个线程都有这样大小的一个栈吗？  （美团）
+JVM中一次完整的GC流程是怎样的，对象如何晋升到老年代？
+介绍下GC回收机制与分代回收策略。
+Java中有几种引用关系，它们的区别是什么？
+GC收集算法有哪些？它们的特点是什么？
+如何判断一个对象是否被回收，有哪些GC算法，实际虚拟机使用最多的是什么GC算法？（美团）
+Jvm内存 结构说一下。
+描述JVM内存模型。（东方头条）
+JVM DVM ART的区别（360）
+描述GC机制。Class会不会回收？用不到的Class怎么回收？(东方头条)
+StackOverFlow与OOM的区别？分别发生在什么时候，JVM栈中存储的是什么，堆存储的是什么？（美团）
+Java虚拟机和Dalvik虚拟机的区别？
+请描述new一个对象的流程。
+Java对象会不会分配到栈中？
+String， Stringbuffer， StringBuilder 的区别是什么？（东方头条）
+String StringBuffer StringBuilder在进行字符串操作时的效率；这里主要考察String在内存中是如何创建的。（字节跳动）
+String为什么是不可变的？（字节跳动）
+String为什么设计成final的？
+final 、finally、finalize 区别。
+抽象类和接口的区别。
+重载和重写的区别 （京东）
+什么是值传递和引用传递，Java 是值传递还是引用传递？
+String s = new String(“”);创建了几个对象?
+java里 equals和== 区别。
+try-catch-finally，try里有return，finally还执行么？
+Excption与Error区别。
+Static class 与non static class的区别。
+PathClassLoader与DexClassLoader的区别是什么？
+什么是双亲委托机制，为什么需要双亲委托机制？
+描述JVM类加载过程。
+动态代理是什么？如何实现？
+动态代理的方法怎么初始化的？（字节跳动）
+CGLIB动态代理（字节跳动）
+说说反射的应用场景，哪些框架，原理是什么？
+Java泛型的特点与优缺点，泛型擦除是怎么回事？
+List<String>能否转为List<Object>。
+泛型super和extends的区别。
+说法2：Java 的泛型，<? super T> 和 <? extends T> 的区别。
+为什么IO是耗时操作？
+
+3.3 并发编程 
+
+Synchronized的原理以及与ReentrantLock的区别。（360）
+Synchronized在JDK1.8之后做了哪些优化 （京东）
+Synchronized static与非static锁的区别和范围（小米）
+volatile关键字干了什么？（什么叫指令重排） （字节跳动）
+volatile 能否保证线程安全？在DCL上的作用是什么？
+volatile和synchronize有什么区别？（B站 小米 京东）
+两个线程用不同的对象，怎么样？（字节跳动）
+什么是守护线程？你是如何退出一个线程的？
+sleep 、wait、yield 的区别，wait 的线程如何唤醒它？（东方头条、字节跳动）
+sleep是可中断的么？（小米）
+实现非阻塞式生产者消费者（字节跳动）
+如何开启一个线程，开启大量线程会有什么问题，如何优化？（美团）
+线程生命周期。
+ThreadLocal是什么？
+AyncTask的原理。
+AsyncTask中的任务是串行的还是并行的？
+线程池管理线程原理。
+线程池的相关参数，有哪些类型的线程池，线程池任务如何调度，任务队列只是先进先出的队列吗，任务有优先级怎么办，知道优先级反转吗？ (美团)
+有三个线程T1，T2，T3，怎么确保它们按顺序执行？
+Android中操作多线程的方式有哪些？
+怎样获取当前线程是否是主线程 （字节跳动）
+HandlerThread是什么？
+线程间如何通信？
+RxJava线程切换原理，RxJava1和RxJava2的区别有哪些？
+
+3.4 网络编程
+描述TCP三次握手与四次挥手的过程与意义。
+TCP的三次握手过程？为什么会采用三次握手，若采用二次握手可以吗？
+三次握手为什么不是两次一次 五次六次（美团）
+TCP与UDP的区别是什么？（腾讯）
+TCP 的阻塞机制 oppo
+Http与Https的关系是什么？
+SSL握手的过程。
+Http的post与get请求的区别是什么？
+输入一个URL到浏览器发生了什么？(美团)
+
+第三部分：Android体系
+第四章 Android组件
+Acitvity的生命周期是什么样的？
+Acitvity的生命周期，如何摧毁一个Activity? (美团)
+图片: https://uploader.shimo.im/f/4n3oXbQ5t6gAETod.png
+Activity的4大启动模式，与开发中需要注意的问题，如onNewIntent() 的调用；
+Activity的启动模式，区别 （美团）
+singleInstance如果不指定栈名，是怎么分配的？（字节跳动）
+Intent显示跳转与隐式跳转，如何使用？（美团）
+Activity A跳转B，B跳转C，A不能直接跳转到C，A如何传递消息给C？(美团)
+Activity如何保存状态的？
+请描诉Activity的启动流程，从点击图标开始。(B站)
+APP是怎么启动的？
+启动一个Activity的流程分析
+Service的生命周期是什么样的？
+Service两种生命周期以及区别
+你会在什么情况下使用Service？
+startServer和bindServier的区别？(美团)
+Service和Thread的区别？
+IntentService与Service的区别？
+ContentProvider如何自定义与使用场景是什么？
+BroadcastReciver的静态注册与动态注册的区别？
+广播的分类与工作原理
+可以再onReceive中开启线程么，会有什么问题？
+什么是有序广播？
+Application、Activity、Service中context的区别？能否启动一个activity、dialog?
+Fragment的生命周期？  （美团）
+Fragment的构造函数为啥不让传参？（B站）
+Fragment add与replace的区别，分别对Fragment的生命周期影响（美团）
+第五章 View System
+View绘制流程与自定义View注意点。（东方头条、美团）
+Android中的每一个UI控件都是集成自View,然后这些View都具有相同的绘制流程，必须经过measure,layout和draw.
+ view的绘制流程是在Window添加过程中，ViewRootImpl类的setView方法开始的
+
+在onResume中可以测量宽高么
+
+事件冲突怎么解决？（东方头条）
+View分发反向制约的方法？（字节跳动）
+自定义Behavior，NestScroll，NestChild。（东方头条）
+View.inflater过程与异步inflater（东方头条）
+inflater为什么比自定义View慢？（东方头条）
+onTouchListener onTouchEvent onClick的执行顺序。（58 京东）
+怎么拦截事件 onTouchEvent如果返回false onClick还会执行么？（58 京东）
+事件的分发机制，责任链模式的优缺点 （美团）
+动画的分类以及区别（车和家）
+属性动画与普通的动画有什么区别？（车和家）
+插值器 估值器的区别（车和家）
+RecyclerView与ListView的对比，缓存策略，优缺点。（美团）
+WebView如何做资源缓存？（字节跳动）
+WebView和JS交互的几种方式与拦截方法。（字节跳动）
+
+View中onTouch，onTouchEvent和onClick的执行顺序
+View的滑动方式
+invalidate() 和 postInvalicate() 区别
+View的绘制流程是从Activity的哪个生命周期方法开始执行的
+Activity,Window,View三者的联系和区别
+如何实现Activity窗口快速变暗
+ListView卡顿的原因以及优化策略
+ViewHolder为什么要被声明成静态内部类
+Android中的动画有哪些? 动画占用大量内存，如何优化
+自定义View执行invalidate()方法,为什么有时候不会回调onDraw()
+DecorView, ViewRootImpl,View之间的关系，ViewGroup.add()会多添加一个ViewrootImpl吗
+如何通过WindowManager添加Window(代码实现)？
+为什么Dialog不能用Application的Context？
+WindowMangerService中token到底是什么？有什么区别
+RecyclerView是什么？如何使用？如何返回不一样的Item
+RecyclerView的回收复用机制
+如何给ListView & RecyclerView加上拉刷新 & 下拉加载更多机制
+如何对ListView & RecycleView进行局部刷新的？
+ScrollView下嵌套一个RecycleView通常会出现什么问题？
+一个ListView或者一个RecyclerView在显示新闻数据的时候，出现图片错位，可能的原因有哪些 & 如何解决？
+Requestlayout，onlayout，onDraw，DrawChild区别与联系
+如何优化自定义View
+
+第六章 Android FrameWork
+Android中多进程通信的方式有哪些？
+进程通信你用过哪些？原理是什么？（字节跳动、小米）
+描述下Binder机制原理？（东方头条）
+Binder线程池的工作过程是什么样？（东方头条）
+Handler怎么进行线程通信，原理是什么？（东方头条）
+Handler如果没有消息处理是阻塞的还是非阻塞的？（字节跳动、小米）
+handler.post(Runnable) runnable是如何执行的？（字节跳动、小米）
+handler的Callback和handlemessage都存在，但callback返回true handleMessage还会执行么？（字节跳动、小米）
+Handler的sendMessage和postDelay的区别？（字节跳动）
+IdleHandler是什么？怎么使用，能解决什么问题？
+为什么Looper.loop不阻塞主线程？
+Looper无限循环为啥没有ANR（B站）
+Looper如何在子线程中创建？（字节跳动、小米）
+Looper、handler、线程间的关系。例如一个线程可以有几个Looper可以对应几个Handler？（字节跳动、小米）
+如何更新UI，为什么子线程不能更新UI？(美团)
+ThreadLocal的原理，以及在Looper是如何应用的？（字节跳动、小米）
+Android 有哪些存储数据的方式？
+SharedPreference原理，commit与apply的区别是什么？使用时需要有哪些注意？
+如何判断一个 APP 在前台还是后台？
+源码层面来说下application为什么是单例? Vivo
+如何做应用保活？
+一张图片100x100在内存中的大小？（字节跳动）
+ Intent的原理，作用，可以传递哪些类型的参数?
+如果需要在Activity间传递大量的数据怎么办？
+打开多个页面，如何实现一键退出?
+LiveData的生命周期如何监听的?(B站)
+
+第七章 性能优化
+内存优化，内存抖动和内存泄漏。（东方头条）
+什么时候会发生内存泄漏？举几个例子（美团）
+Bitmap压缩，质量100%与90%的区别？（东方头条）
+TraceView的使用，查找CPU占用（东方头条）
+内存泄漏查找 （酷我音乐）
+ANR查找
+ANR是什么，怎么解决？(美团)
+CPU波动
+当前项目中是如何进行性能优化分析的
+冷启动、热启动的概念（酷我音乐）
+View层次过深怎么优化，选择哪个布局比较好？（美团）
+怎样检测函数执行是否卡顿 (字节跳动)
+
+第八章 开源框架
+LeakCanray 2.0为啥不需要在application里调install？（B站）
+OkHttp的原理（B站）
+Glide缓存机制（B站）
+Android如何发起网络请求，有用过相关框架码？OkHttp框架解决了你什么问题？（美团）
+
+第九章 NDK
+Jni了解吗？有没有自己使用过,只要编译成功Hello World也算,与JAVA相比效率如何？（美团）
+C++中引用和指针的区别。
