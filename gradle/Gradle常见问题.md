@@ -132,5 +132,132 @@ VariantTypeImpl有很多枚举：BASE_APK，OPTIONAL_APK，LIBRARY，TEST_APK，
 
 
 
+### 3.手动下载SDK
 
+错误问题：
+\> Failed to install the following Android SDK packages as some licences have not been accepted.
+   platforms;android-30 Android SDK Platform 30
+   build-tools;30.0.1 Android SDK Build-Tools 30.0.1
+
+
+下载sdk命令：
+sdkmanager "platform-tools" "platforms;android-30"
+
+下载完成后还是会提示相同的问题，此时在执行以下命令，自动接受license
+
+yes | sdkmanager --licenses
+
+
+
+### 4.gradle缓存问题
+
+主要删除以下2个文件(最好将整个包名目录都删除了):
+
+descriptor.bin
+E:\Android\.gradle\caches\modules-2\metadata-2.96\descriptors
+
+aar和pom文件
+E:\Android\.gradle\caches\modules-2\files-2.1\com.techedux.classx.debugtool\
+
+
+
+或者使用以下命令
+
+强制更新缓存
+gradlew build --refresh-dependencies
+
+清除当前项目缓存
+gradlew cleanBuildCache
+
+
+
+### 5.gradle命令合并和依赖
+
+```groovy
+task cleanBuildPublish {
+    dependsOn 'clean'
+    dependsOn 'build'
+    dependsOn 'publish'
+    tasks.findByName('build').mustRunAfter 'clean'
+    tasks.findByName('publish').mustRunAfter 'build'
+}
+```
+
+
+
+
+
+### 6.maven publish
+
+```groovy
+plugins {
+    id 'maven-publish'
+}
+
+def nexusRepositoryUrl = NEXUS_RELEASES
+version = DEBUG_TOOL_NO_OP_LIB_VERSION
+
+if (!DEBUG_TOOL_NO_OP_LIB_IS_RELEASE.toBoolean()) {
+    version = "${DEBUG_TOOL_NO_OP_LIB_VERSION}-SNAPSHOT"
+    nexusRepositoryUrl = NEXUS_SNAPSHOTS
+}
+
+publishing {
+    publications {
+        release(MavenPublication) {
+            artifactId = DEBUG_TOOL_NO_OP_LIB_ARTIFACT
+            groupId = DEBUG_TOOL_NO_OP_LIB_GROUP
+            //依赖bundleReleaseAar，如果不依赖会找不到aar包，每次发布都更新aar，不使用缓存aar
+            afterEvaluate { artifact(tasks.getByName("bundleReleaseAar")) }
+            //存储在pom文件里的描述信息
+            pom {
+                name = DEBUG_TOOL_NO_OP_LIB_ARTIFACT
+                description = DEBUG_TOOL_NO_OP_LIB_DES
+                url = LIB_URL
+            }
+            // pom文件中声明依赖，从而传递到使用方,如果没声明，第三方依赖不会写到pom文件中
+            pom.withXml {
+                def dependenciesNode = asNode().appendNode('dependencies')
+                configurations.implementation.allDependencies.each {
+                    // 避免出现空节点或 artifactId=unspecified 的节点
+                    if (it.group != null && (it.name != null && "unspecified" != it.name) && it.version != null) {
+                        println it.toString()
+                        def dependencyNode = dependenciesNode.appendNode('dependency')
+                        dependencyNode.appendNode('groupId', it.group)
+                        dependencyNode.appendNode('artifactId', it.name)
+                        dependencyNode.appendNode('version', it.version)
+                        dependencyNode.appendNode('scope', 'implementation')
+                    }
+                }
+            }
+        }
+    }
+    //仓库
+    repositories {
+        maven {
+            url = nexusRepositoryUrl
+            println(url)
+            credentials {
+                username = NEXUS_USERNAME
+                password = NEXUS_PASSWORD
+            }
+        }
+    }
+}
+```
+
+
+
+### 7.常用仓库地址配置
+
+```groovy
+repositories {
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        maven { url 'https://maven.aliyun.com/repository/jcenter' }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        maven { url 'https://maven.aliyun.com/nexus/content/repositories/releases/' }
+        jcenter()
+        google()        
+}
+```
 
