@@ -51,3 +51,73 @@ target_link_libraries(
 )
 ```
 
+
+
+输出
+
+```cmake
+
+#[[
+(无) = 重要消息；
+STATUS = 非重要消息；
+WARNING = CMake 警告, 会继续执行；
+AUTHOR_WARNING = CMake 警告 (dev), 会继续执行；
+SEND_ERROR = CMake 错误, 继续执行，但是会跳过生成的步骤；
+FATAL_ERROR = CMake 错误, 终止所有处理过程；
+]]
+
+message(STATUS "666>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+```
+
+
+
+引入子目录下的CMakeLists.txt 
+
+```cmake
+cmake_minimum_required(VERSION 3.10.2)
+
+file(GLOB SOURCE *.cpp)
+
+add_library(
+        count
+        SHARED # 最终生成 libcount.so
+        ${SOURCE}
+)
+```
+
+
+
+```cmake
+cmake_minimum_required(VERSION 3.10.2)
+
+file(GLOB SOURCE *.c)
+
+add_library(
+        get
+        STATIC # 最终生成 libget.a
+        ${SOURCE}
+)
+```
+
+
+
+```cmake
+#引入get子目录下的CMakeLists.txt
+add_subdirectory(${CMAKE_SOURCE_DIR}/cpp/libget)
+
+#引入count子目录下的CMakeLists.txt
+add_subdirectory(${CMAKE_SOURCE_DIR}/cpp/libcount)
+
+target_link_libraries( # native-lib是我们的总库
+        native-lib # 被链接的总库
+        log # 自动寻找  # 具体的库 链接到 libnative-lib.so里面去
+        get # 具体的库 链接到 libnative-lib.so里面去
+        count # 具体的库 链接到 libnative-lib.so里面去
+        )
+
+```
+
+
+
+
+
