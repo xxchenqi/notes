@@ -388,6 +388,18 @@ git push <remote> <tag>
 git push --tags
 ```
 
+删除本地tag
+
+```
+git tag -d <tag>
+```
+
+删除远程tag
+
+```
+git push origin :refs/tags/标签名  
+```
+
 
 
 
