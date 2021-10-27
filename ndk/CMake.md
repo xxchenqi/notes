@@ -101,6 +101,25 @@ add_library(
 
 
 
+静态库需要在build.gradle defaultConfig文件中增加这个
+
+```
+externalNativeBuild {
+            cmake {
+                cppFlags ""
+            }
+
+            cmake {
+                arguments '-DANDROID_PLATFORM=android-14','-DANDROID_TOOLCHIAN=clang'
+                targets 'static-lib'
+            }
+        }
+```
+
+
+
+
+
 ```cmake
 #引入get子目录下的CMakeLists.txt
 add_subdirectory(${CMAKE_SOURCE_DIR}/cpp/libget)
