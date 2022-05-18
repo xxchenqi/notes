@@ -443,6 +443,8 @@ git push origin master
 
 
 ### 2.Permission denied (publickey).
+参考网页
+https://blog.51cto.com/u_15057807/4535658
 
 Permission denied (publickey) 没有权限的publickey ，出现这错误一般是以下两种原因
 
