@@ -261,3 +261,18 @@ repositories {
 }
 ```
 
+
+
+### 8.AAR 内部三方库依赖的问题
+
+```
+使用 Android Studio 打包出来的 AAR ，不会将其依赖的三方库打包进去。
+
+
+举个例子，library Test 依赖了 okhttp,打包成了 Test.aar ,app 使用本地方式引用了 Test.aar，但是无法使用 okhttp，为了不报错，app还需要添加 okhttp 依赖。
+Google Android Studio 的负责人在 stackoverflow 上解释了 为什么 Android Studio 不能将多个依赖打包进一个 AAR 文件的原因，是因为将不同的library打包在一起，涉及到资源和配置文件智能合并，所以是个比较复杂的问题，同时也容易造成相同的依赖冲突。
+官方虽然不支持，但是开发者的能力是无限的，为了解决此问题，开发出来了一个 Gradle 插件 android-fat-aar, 这种方式是抛弃 Android Studio 自带的打包 AAR 的方法，而是自己编写一个生成 AAR 的脚本。也是很厉害了，但是很不幸，目前来看 gradle 2.2.3+ 以上，这个就不适用了。
+不过，不要慌，这个问题可以通过使用 Maven 依赖解决。因为 library Module 上传 Maven 后，会生成 一个 .pom 文件，记录 library Module 的依赖。当 Gradle 依赖 Maven 上的这个库时，会通过 pom 文件下载对应依赖。如果不想要对应依赖的话，可以通过下面的方法关闭 Gradle 的依赖传递。
+```
+
+https://juejin.cn/post/6844903992191877133
