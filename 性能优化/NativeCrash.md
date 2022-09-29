@@ -1,4 +1,4 @@
-# breakpad
+# NativeCrash
 
 ## 1.minidump_stackwalk+addr2line
 
@@ -164,3 +164,42 @@ Thread 0 (crashed)
     Found by: call frame info
 ```
 
+
+
+
+
+## 3.ndk-stack(强烈推荐)
+
+注:此方式不需要引入breakpad，引入的情况是捕获不到堆栈信息
+
+```
+adb logcat | $NDK/ndk-stack -sym xxx/obj/local/armeabi (so文件目录)
+
+adb logcat | G:\sdk\ndk\16.1.4479499\ndk-stack.cmd -sym xxx\build\intermediates\cmake\debug\obj\arm64-v8a
+```
+
+
+
+查看日志
+
+```
+
+********** Crash dump: **********
+Build fingerprint: 'HONOR/DUK-AL20/HWDUK:8.0.0/HUAWEIDUK-AL20/360(C00GT):user/release-keys'
+#00 0x0000000000000650 /data/app/com.dodola.breakpad-Dbs0MzoQ2QMvJqcTpZylwQ==/lib/arm64/libcrash-lib.so (_Z5Crashv+20)
+                                                                                                         Crash()
+                                                                                                         E:\project\project_android\Chapter01-master\sample\.cxx\cmake\debug\arm64-v8a\../../../../src/main/cpp\crash.cpp:10:8
+#01 0x0000000000000670 /data/app/com.dodola.breakpad-Dbs0MzoQ2QMvJqcTpZylwQ==/lib/arm64/libcrash-lib.so (Java_com_dodola_breakpad_MainActivity_crash+20)
+                                                                                                         Java_com_dodola_breakpad_MainActivity_crash
+                                                                                                         E:\project\project_android\Chapter01-master\sample\.cxx\cmake\debug\arm64-v8a\../../../../src/main/cpp\crash.cpp:16:5
+#02 0x000000000000909c /data/app/com.dodola.breakpad-Dbs0MzoQ2QMvJqcTpZylwQ==/oat/arm64/base.odex (offset 0x9000)
+Crash dump is completed
+```
+
+
+
+
+
+## 其他
+
+dump_syms 和 minidump_stackwalk 需要通过breakpad编译出来
