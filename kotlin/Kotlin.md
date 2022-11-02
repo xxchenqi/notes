@@ -749,9 +749,683 @@ Kotlin 官方只建议我们将 inline 用于修饰高阶函数。对于普通�
 
 
 
-## 有问题的代码
 
-1.错误的写法
+
+## tailrec
+
+使用递归来替代循环都是有调用栈开销的，所以我们应该尽量使用尾递归
+
+
+
+尾递归会经过栈复用优化以后，它的开销就可以忽略不计了，我们可以认为它的空间复杂度是 O(1)
+
+```kotlin
+fun recursionLoop(): Int {
+// 变化在这里
+//     ↓
+    tailrec fun go(i: Int, sum: Int): Int =
+        if (i > 10) sum else go(i + 1, sum + i)
+
+    return go(1, 0)
+}
+```
+
+使用 Kotlin 集合操作符一行代码就能搞定
+
+```kotlin
+fun reduce() = (1..10).reduce { acc, i -> acc + i } 
+```
+
+
+
+## 委托
+
+### 委托类
+
+Kotlin 的委托类提供了语法层面的委托模式。通过这个 by 关键字，就可以自动将接口里的方法委托给一个对象，从而可以帮我们省略很多接口方法适配的模板代码。
+
+```kotlin
+interface DB {
+    fun save()
+}
+
+class SqlDB() : DB {
+    override fun save() { println("save to sql") }
+}
+
+class GreenDaoDB() : DB {
+    override fun save() { println("save to GreenDao") }
+}
+//               参数  通过 by 将接口实现委托给 db 
+//                ↓            ↓
+class UniversalDB(db: DB) : DB by db
+
+fun main() {
+    UniversalDB(SqlDB()).save()
+    UniversalDB(GreenDaoDB()).save()
+}
+
+/*
+输出：
+save to sql
+save to GreenDao
+*/
+```
+
+等价于以下 Java 代码
+
+```java
+class UniversalDB implements DB {
+    DB db;
+    public UniversalDB(DB db) { this.db = db; }
+             //  手动重写接口，将 save 委托给 db.save()
+    @Override//            ↓
+    public void save() { db.save(); }
+}
+```
+
+### 委托属性
+
+```kotlin
+class Item {
+    var count: Int = 0
+    var total: Int by ::count
+}
+```
+
+```java
+// 近似逻辑，实际上，底层会生成一个Item$total$2类型的delegate来实现
+
+class Item {
+    var count: Int = 0
+
+    var total: Int
+        get() = count
+
+        set(value: Int) {
+            count = value
+        }
+}
+```
+
+### 懒加载委托
+
+```kotlin
+//            定义懒加载委托
+//               ↓   ↓
+val data: String by lazy {
+    request()
+}
+
+fun request(): String {
+    println("执行网络请求")
+    return "网络数据"
+}
+
+fun main() {
+    println("开始")
+    println(data)
+    println(data)
+}
+
+结果：
+开始
+执行网络请求
+网络数据
+网络数据
+```
+
+
+
+### 自定义委托
+
+```kotlin
+class StringDelegate(private var s: String = "Hello") {
+    operator fun getValue(thisRef: Owner, property: KProperty<*>): String {
+        return s
+    }
+    operator fun setValue(thisRef: Owner, property: KProperty<*>, value: String) {
+            s = value
+    }
+}
+class Owner { 
+    var text: String by StringDelegate()
+}
+```
+
+也可以借助 Kotlin 提供的 ReadWriteProperty、ReadOnlyProperty 这两个接口，来自定义委托。
+
+```kotlin
+public fun interface ReadOnlyProperty<in T, out V> {
+    public operator fun getValue(thisRef: T, property: KProperty<*>): V
+}
+
+public interface ReadWriteProperty<in T, V> : ReadOnlyProperty<T, V> {
+    public override operator fun getValue(thisRef: T, property: KProperty<*>): V
+
+    public operator fun setValue(thisRef: T, property: KProperty<*>, value: V)
+}
+```
+
+```kotlin
+class StringDelegate(private var s: String = "Hello"): ReadWriteProperty<Owner, String> {
+    override operator fun getValue(thisRef: Owner, property: KProperty<*>): String {
+        return s
+    }
+    override operator fun setValue(thisRef: Owner, property: KProperty<*>, value: String) {
+        s = value
+    }
+}
+```
+
+
+
+### 提供委托（provideDelegate）
+
+通过 provideDelegate 这样的方式，我们不仅可以嵌套 Delegator，还可以根据不同的逻辑派发不同的 Delegator。
+
+```kotlin
+class SmartDelegator {
+
+    operator fun provideDelegate(
+        thisRef: Owner,
+        prop: KProperty<*>
+    ): ReadWriteProperty<Owner, String> {
+
+        return if (prop.name.contains("log")) {
+            StringDelegate("log")
+        } else {
+            StringDelegate("normal")
+        }
+    }
+}
+
+class Owner {
+    var normalText: String by SmartDelegator()
+    var logText: String by SmartDelegator()
+}
+
+fun main() {
+    val owner = Owner()
+    println(owner.normalText)
+    println(owner.logText)
+}
+
+结果：
+normal
+log
+```
+
+
+
+## 泛型
+
+### 型变
+
+型变就是为了解决泛型的不变性问题。
+
+已知 Cat 是 Animal 的子类的情况下，MutableList\<List>与MutableList\<Animal>之间是没有任何关系的。
+在默认情况下，编译器会认为MutableList\<List>与MutableList\<Animal>之间不存在任何继承关系，它们也无法互相替代，这就是泛型的不变性。
+
+但是在某些特定场景下，编译器这种行为还是会给我们带来麻烦的。而这个时候，就需要泛型的逆变与协变了。
+
+### 逆变
+
+```kotlin
+open class TV {
+    open fun turnOn() {}
+}
+
+class XiaoMiTV1: TV() {
+    override fun turnOn() {}
+}
+
+class Controller<T> {
+    fun turnOn(tv: T) {}
+}
+//                      需要一个小米电视1的遥控器
+//                                ↓
+fun buy(controller: Controller<XiaoMiTV1>) {
+    val xiaoMiTV1 = XiaoMiTV1()
+    // 打开小米电视1
+    controller.turnOn(xiaoMiTV1)
+}
+
+fun main() {
+//                             实参
+//                              ↓
+    val controller = Controller<TV>()
+    // 传入万能遥控器，报错
+    buy(controller)
+}
+
+```
+
+在这段代码中，由于我们传入的泛型实参是 TV
+
+不过 Kotlin 编译器会报错，报错的内容是说“类型不匹配”，需要的是小米遥控器的Controller\<XiaoMiTV1>，你却买了个万能遥控器Controller。在默认情况下，Kotlin 编译器就是这么认死理。
+
+如何解决?
+
+1.使用处型变(使用处逆变)
+
+```kotlin
+//                         变化在这里
+//                             ↓
+fun buy(controller: Controller<in XiaoMiTV1>) {
+    val xiaoMiTV1 = XiaoMiTV1()
+    // 打开小米电视1
+    controller.turnOn(xiaoMiTV1)
+}
+```
+
+2.声明处型变(声明处逆变)
+
+```kotlin
+//            变化在这里
+//               ↓
+class Controller<in T> {
+    fun turnOn(tv: T)
+}
+```
+
+
+
+这样修改之后，我们就可以使用Controller\<TV>来替代Controller\<XiaoMiTV1>，也就是说，Controller\<TV>是Controller\<XiaoMiTV1>的子类。
+
+所以父子关系颠倒的现象，我们就叫做“泛型的逆变”
+
+另一种父子关系一致的现象，也就是泛型的协变。
+
+
+
+### 协变
+
+```kotlin
+open class Food {}
+
+class KFC: Food() {}
+
+
+class Restaurant<T> {
+    fun orderFood(): T { /*..*/ }
+}
+
+
+//                      这里需要一家普通的饭店，随便什么饭店都行
+//                                     ↓
+fun orderFood(restaurant: Restaurant<Food>) {
+   restaurant.orderFood()
+}
+
+fun main() {
+//                  找到一家肯德基
+//                        ↓
+    val kfc = Restaurant<KFC>()
+// 需要普通饭店，传入了肯德基，编译器报错
+    orderFood(kfc)
+}
+```
+
+在这段代码中，会发现编译器提示最后一行代码报错，报错的原因同样是：“类型不匹配”，我们需要的是一家随便类型的饭店Restaurant，而传入的是肯德基Restaurant，不匹配。
+
+如何解决?
+
+1.使用处协变
+
+```kotlin
+//                                变化在这里
+//                                    ↓
+fun orderFood(restaurant: Restaurant<out Food>) {
+    // 从这家饭店，点一份外卖
+    val food = restaurant.orderFood()
+}
+```
+
+2.声明处协变
+
+```kotlin
+//            变化在这里
+//                ↓
+class Restaurant<out T> {
+    fun orderFood(): T { /*..*/ }
+}
+```
+
+在做完以上任意一种修改以后，我们可以使用Restaurant\<KFC>替代Restaurant\<Food>，也就意味着Restaurant\<KFC>可以看作是Restaurant\<Food>的子类。
+
+食物与饭店它们之间的父子关系一致了。这种现象，我们称之为“泛型的协变”。
+
+
+
+### 星投影
+
+星投影，其实就是用“星号”作为泛型的实参。
+
+```kotlin
+//                   区别在这里
+//                       ↓
+class Restaurant<out T: Food> {
+    fun orderFood(): T {}
+}
+
+//如果我们并不关心找到的饭店到底是什么类型，那么，我们就完全可以把“星号”作为泛型的实参
+fun findRestaurant(): Restaurant<*> {}
+
+fun main() {
+    val restaurant = findRestaurant()
+    //       注意这里
+    //          ↓
+    val food: Food = restaurant.orderFood() // 返回值是：Food或其子类
+    //当我们调用 restaurant.orderFood() 的时候，就无法确定它返回的值到底是什么类型。这时候，变量 food 的实际类型可能是任意的,为Restaurant 的泛型类型加上边界的话，food 的类型就可以更精确一些。
+}
+```
+
+当我们为 Restaurant 泛型类型增加了上界 Food 以后，即使我们使用了“星投影”，也仍然可以通过调用 restaurant.orderFood()，来拿到 Food 类型的变量。在这里，food 的实际类型肯定是 Food 或者是 Food 的子类，因此我们可以将其看作是 Food 类型。
+
+
+
+### 到底什么时候用逆变，什么时候用协变？
+
+```kotlin
+//              逆变
+//               ↓
+class Controller<in T> {
+//                 ①
+//                 ↓
+    fun turnOn(tv: T)
+}
+
+//               协变
+//                ↓
+class Restaurant<out T> {
+//                   ②
+//                   ↓
+    fun orderFood(): T { /*..*/ }
+}
+```
+
+被传入函数的里面，这往往是一种写入行为，这时候，我们使用关键字 in。
+
+被传出函数的外面，这往往是一种读取行为，这时候，我们使用关键字 out。
+
+传入 in，传出 out。或者也可以说：泛型作为参数的时候，用 in，泛型作为返回值的时候，用 out。
+
+
+
+### 案例
+
+1.
+
+```kotlin
+//                          逆变
+//                           ↓
+public interface Comparable<in T> {
+//                                   泛型作为参数
+//                                       ↓
+    public operator fun compareTo(other: T): Int
+}
+
+//                        协变
+//                         ↓
+public interface Iterator<out T> {
+//                         泛型作为返回值
+//                              ↓    
+    public operator fun next(): T
+    
+    public operator fun hasNext(): Boolean
+}
+```
+
+
+
+2.这里入参为什么可以使用协变呢？
+
+```kotlin
+sealed class Result<out R> {
+//                     协变     ①
+//                      ↓      ↓
+    data class Success<out T>(val data: T, val message: String = "") : Result<T>()
+
+    data class Error(val exception: Exception) : Result<Nothing>()
+
+    data class Loading(val time: Long = System.currentTimeMillis()) : Result<Nothing>()
+}
+```
+
+val 在 Kotlin 当中，代表不可变的变量，当它修饰类成员属性的时候，代表它只有 getter，没有 setter。
+
+所以，我们可以用 out 修饰 Success 泛型的原因，是因为 data 的 getter 方法，它本质上是一个返回 T 类型的方法。如果改为 var，那么代码就会立马报错。
+
+
+
+3.泛型E为什么既作为了返回值类型，又作为了参数类型。
+
+```kotlin
+//                   协变    
+//                    ↓      
+public interface List<out E> : Collection<E> {
+//                                泛型作为返回值
+//                                       ↓    
+    public operator fun get(index: Int): E
+//                                           泛型作为参数
+//                                                 ↓    
+    override fun contains(element: @UnsafeVariance E): Boolean
+//                                        泛型作为参数
+//                                              ↓   
+    public fun indexOf(element: @UnsafeVariance E): Int
+}
+```
+
+Kotlin 官方源码当中的 List，也就是这里的泛型 E，它既作为了返回值类型，又作为了参数类型。
+
+对于 contains、indexOf 这样的方法，它们虽然以 E 作为参数类型，但本质上并没有产生写入的行为。所以，我们用 out 修饰 E 并不会带来实际的问题。
+
+所以这个时候，我们就可以通过 @UnsafeVariance 这样的注解，来让编译器忽略这个型变冲突的问题。
+
+
+
+4.instance为什么可以用协变的泛型 T 呢
+
+```kotlin
+//                           逆变   协变
+//                            ↓     ↓
+abstract class BaseSingleton<in P, out T> {
+//                        ①
+    @Volatile//           ↓
+    private var instance: T? = null
+    //                              参数  返回值
+    //                               ↓    ↓
+    protected abstract val creator: (P)-> T
+
+    //                    参数 返回值
+    //                     ↓   ↓
+    fun getInstance(param: P): T =
+        instance ?: synchronized(this) {
+            instance ?: creator(param).also { instance = it }
+    }
+}
+```
+
+Instance 是用泛型 T 修饰的，而它是 var 定义的成员变量，这就意味着，它既有 getter，又有 setter。
+
+这是因为它是 private 的，如果把 private 关键字删掉的话，上面的代码就会报错了。
+
+
+
+
+
+### 其他
+
+Java 当中也有型变的概念，但是呢，Java 当中是没有声明处型变的。
+
+|        | 使用处协变                  | 使用处逆变                     |
+| ------ | --------------------------- | ------------------------------ |
+| kotlin | Restaurant\<out Food>       | Controller\<in XiaoMiTV1>      |
+| java   | Restaurant\<? extends Food> | Controller\<? super XiaoMiTV1> |
+
+ Java中的“星投影”：<?>
+
+
+
+“使用处型变”和“声明处型变”，它们有什么区别呢？
+
+```
+声明处型变无法支持又有in又有out，只能在使用处根据情况型变。
+```
+
+
+
+## 注解
+
+元注解：本身是注解的同时，还可以用来修饰其他注解。
+
+Kotlin 常见的元注解有四个：
+
+@Target，这个注解是指定了被修饰的注解都可以用在什么地方，也就是目标；
+
+@Retention，这个注解是指定了被修饰的注解是不是编译后可见、是不是运行时可见，也就是保留位置；
+
+@Repeatable，这个注解是允许我们在同一个地方，多次使用相同的被修饰的注解，使用场景比较少；
+
+@MustBeDocumented，指定被修饰的注解应该包含在生成的 API 文档中显示，这个注解一般用于 SDK 当中。
+
+```kotlin
+public enum class AnnotationTarget {
+    // 类、接口、object、注解类
+    CLASS,
+    // 注解类
+    ANNOTATION_CLASS,
+    // 泛型参数
+    TYPE_PARAMETER,
+    // 属性
+    PROPERTY,
+    // 字段、幕后字段
+    FIELD,
+    // 局部变量
+    LOCAL_VARIABLE,
+    // 函数参数
+    VALUE_PARAMETER,
+    // 构造器
+    CONSTRUCTOR,
+    // 函数
+    FUNCTION,
+    // 属性的getter
+    PROPERTY_GETTER,
+    // 属性的setter
+    PROPERTY_SETTER,
+    // 类型
+    TYPE,
+    // 表达式
+    EXPRESSION,
+    // 文件
+    FILE,
+    // 类型别名
+    TYPEALIAS
+}
+
+public enum class AnnotationRetention {
+    // 注解只存在于源代码，编译后不可见
+    SOURCE,
+    // 注解编译后可见，运行时不可见
+    BINARY,
+    // 编译后可见，运行时可见
+    RUNTIME
+}
+```
+
+## 反射
+
+KClass 代表了一个 Kotlin 的类，下面是它的重要成员：
+
+```
+simpleName，类的名称，对于匿名内部类，则为 null；
+qualifiedName，完整的类名；
+members，所有成员属性和方法，类型是Collection<KCallable<*>>；
+constructors，类的所有构造函数，类型是Collection<KFunction<T>>>；
+nestedClasses，类的所有嵌套类，类型是Collection<KClass<*>>；
+visibility，类的可见性，类型是KVisibility?，分别是这几种情况，PUBLIC、PROTECTED、INTERNAL、PRIVATE；
+isFinal，是不是 final；
+isOpen，是不是 open；
+isAbstract，是不是抽象的；
+isSealed，是不是密封的；
+isData，是不是数据类；
+isInner，是不是内部类；
+isCompanion，是不是伴生对象；
+isFun，是不是函数式接口；
+isValue，是不是 Value Class
+```
+
+KCallable 代表了 Kotlin 当中的所有可调用的元素，比如函数、属性、甚至是构造函数。下面是 KCallable 的重要成员：
+
+```
+name，名称，这个很好理解，属性和函数都有名称；
+parameters，所有的参数，类型是List，指的是调用这个元素所需的所有参数；
+returnType，返回值类型，类型是 KType；
+typeParameters，所有的类型参数 (比如泛型)，类型是List；
+call()，KCallable 对应的调用方法，在前面的例子中，我们就调用过 setter、getter 的 call() 方法。
+visibility，可见性；
+isSuspend，是不是挂起函数。
+```
+
+KParameter，代表了KCallable当中的参数，它的重要成员如下：
+
+```
+index，参数的位置，下标从 0 开始；
+name，参数的名称，源码当中参数的名称；
+type，参数的类型，类型是 KType；
+kind，参数的种类，对应三种情况：INSTANCE 是对象实例、EXTENSION_RECEIVER 是扩展接受者、VALUE 是实际的参数值。
+```
+
+KType，代表了 Kotlin 当中的类型，它重要的成员如下：
+
+```
+classifier，类型对应的 Kotlin 类，即 KClass，我们前面的例子中，就是用的 classifier == String::class 来判断它是不是 String 类型的；
+arguments，类型的类型参数，看起来好像有点绕，其实它就是这个类型的泛型参数；
+isMarkedNullable，是否在源代码中标记为可空类型，即这个类型的后面有没有“?”修饰。
+```
+
+
+
+
+
+## 类型系统
+
+Any 是所有非空类型的根类型；而 Any? 是所有可空类型的根类型。
+
+我们可以将 Any 类型赋值给“Any？”类型，反之则不行。我们可以认为“Any？”是所有 Kotlin 类型的根类型。
+
+
+
+Java 当中的 Object 类型，对应 Kotlin 的“Any？”类型。但两者并不完全等价，因为 Kotlin 的 Any 可以没有 wait()、notify() 之类的方法。因此，我们只能说 Kotlin 的“Any？”与 Java 的 Object 是大致对应的。
+
+
+
+Unit 与 Void 与 void
+
+Kotlin 的 Unit 与 Java 的 Void 或者 void 并不存在等价的关系，但它们之间确实存在一些概念上的相似性。
+
+
+
+Nothing
+
+Nothing 就是 Kotlin 所有类型的子类型。
+
+在函数式编程当中，也被叫做底类型（Bottom Type），因为它位于整个类型体系的最底部。
+
+
+
+Nothing 才是底类型，而“Nothing?”则不是底类型。
+
+
+
+
+
+
+
+## 其他
+
+### 1.错误的写法
 
 ```kotlin
 class Person(val name: String, var age: Int) {
@@ -798,7 +1472,7 @@ public final class Person {
 
 
 
-2.Kotlin 接口的“成员属性”是存在一定的局限性的
+### 2.Kotlin 接口的“成员属性”是存在一定的局限性的
 
 接口的属性： 1.不能设置初始值 2.val可以重写get,var的get和set都不能重写
 
@@ -809,3 +1483,203 @@ public final class Person {
 
 
 [JMH](https://github.com/openjdk/jmh)（Java Microbenchmark Harness）
+
+
+
+
+
+
+
+### 3.表达式思维和函数式编程有联系吗?
+
+函数式编程要求函数是一等公民，如果某些函数不能用类型描述（例如Java中的返回为void 函数），后续的赋值，参数传递就很困难，成为一等公民就成为泡影！Kotlin中Nothing，Unit 和 Any?让所有函数的返回都有固定类型，为函数式编程奠定基础。函数的返回值必然来自于某个表达式，这也要求表达式都有固定类型。表达式是函数编程的组成模块，是串联各个函数的纽带，也是决定函数返回值的重要一环。
+
+
+
+### 4.val 一定不可变吗？
+
+```kotlin
+object TestVal {
+    val a: Double
+        get() = Random.nextDouble()
+
+    fun testVal() {
+        println(a)
+        println(a)
+    }
+}
+
+// 结果
+0.0071073054825220305
+0.6478886064282862
+```
+
+
+
+### 5.Smart Cast失效例子
+
+```
+class JavaConvertExample {
+    private var name: String? = null
+    fun init() {
+        name = ""
+    }
+
+    fun foo() {
+        name = null;
+    }
+
+    fun test() {
+        if (name != null) {
+            // 几百行代码
+            foo()
+            //几百行代码
+            val count = name!!.length
+        }
+    }
+}
+```
+
+
+
+解决:
+
+第一种，避免直接访问成员变量或者全局变量，将其改为传参的形式：
+
+```kotlin
+//    改为函数参数
+//        ↓
+fun test(name: String?) {
+    if (name != null) {
+//             函数参数支持Smart Cast
+//                      ↓
+        val count = name.length
+    }
+}
+```
+
+
+
+第二种，避免使用可变变量 var，改为 val 不可变变量：
+
+```kotlin
+class JavaConvertExample {
+//       不可变变量
+//           ↓
+    private val name: String? = null
+
+    fun test() {
+        if (name != null) {
+//               不可变变量支持Smart Cast
+//                          ↓
+            val count = name.length
+        }
+    }
+}
+```
+
+第三种，借助临时的不可变变量：
+
+```kotlin
+class JavaConvertExample {
+    private var name: String? = null
+
+    fun test() {
+//        不可变变量
+//            ↓
+        val _name = name
+        if (_name != null) {
+            // 在if当中，只使用_name这个临时变量
+            val count = _name.length
+        }
+    }
+}
+```
+
+第四种，是借助 Kotlin 提供的标准函数 let：
+
+```kotlin
+class JavaConvertExample {
+    private var name: String? = null
+
+    fun test() {
+//                      标准函数
+//                         ↓
+        val count = name?.let { it.length }
+    }
+}
+```
+
+第五种，是借助 Kotlin 提供的 lateinit 关键字：
+
+```kotlin
+class JavaConvertExample {
+//         稍后初始化             不可空
+//            ↓                   ↓
+    private lateinit var name: String
+
+    fun init() {
+        name = "Tom"
+    }
+
+    fun test() {
+        if (this::name.isInitialized) {
+            val count = name.length
+        } else {
+            println("Please call init() first!")
+        }
+    }
+}
+
+fun main() {
+    val example = JavaConvertExample()
+    example.init()
+    example.test()
+}
+```
+
+第六种，使用 by lazy 委托：
+
+```kotlin
+class JavaConvertExample {
+//         不可变        非空   懒加载委托
+//           ↓           ↓        ↓
+    private val name: String by lazy { init() }
+    
+    fun init() = "Tom"
+    
+    fun test() {
+        val count = name.length
+    }
+}
+```
+
+
+
+### 6.泛型可空性
+
+```kotlin
+fun <T> saveSomething(data: T) {}
+//   ↑ 
+//  等价              
+//   ↓                      
+fun <T: Any?> saveSomething(data: T) {}
+```
+
+解决
+
+```kotlin
+// 增加泛型的边界限制              
+//       ↓                      
+fun <T: Any> saveSomething(data: T) {
+    val set = sortedSetOf<T>()
+    set.add(data)
+}
+
+fun main() {
+//              编译无法通过
+//                  ↓
+    saveSomething(null)
+}
+```
+
