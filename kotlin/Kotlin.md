@@ -1421,6 +1421,280 @@ Nothing 才是底类型，而“Nothing?”则不是底类型。
 
 
 
+## 协程
+
+### 什么是协程？
+
+协程，可以理解为更加轻量的线程，成千上万个协程可以同时运行在一个线程当中；
+
+协程，其实是运行在线程当中的轻量的 Task；
+
+协程，不会与特定的线程绑定，它可以在不同的线程之间灵活切换。
+
+
+
+广义的协程，可以理解为“互相协作的程序”，也就是“Cooperative-routine”。
+
+协程框架，是独立于 Kotlin 标准库的一套框架，它封装了 Java 的线程，对开发者暴露了协程的 API。
+
+程序当中运行的“协程”，可以理解为轻量的线程；
+
+一个线程当中，可以运行成千上万个协程；
+
+协程，也可以理解为运行在线程当中的非阻塞的 Task；
+
+协程，通过挂起和恢复的能力，实现了“非阻塞”；
+
+协程不会与特定的线程绑定，它可以在不同的线程之间灵活切换，而这其实也是通过“挂起和恢复”来实现的。
+
+
+
+协程的轻量，到底意味着什么呢？
+
+尝试启动 10 亿个线程，这样的代码运行在大部分的机器上都是会因为内存不足等原因而异常退出的。
+
+我们启动了 10 亿个协程。由于协程是非常轻量的，所以代码不会因为内存不足而异常退出。
+
+
+
+Kotlin 协程的魅力：以同步的方式完成异步任务。
+
+
+
+### 协程的“非阻塞”
+
+挂起和恢复。这两个能力也是协程才拥有的特殊能力，普通的程序是不具备的。
+
+
+
+那么，协程是如何通过挂起和恢复来实现非阻塞的呢？
+
+大部分的语言当中都会存在一个类似“调度中心”的东西，它会来实现 Task 任务的执行和调度。
+
+而协程除了拥有“调度中心”以外，对于每个协程的 Task，还会多出一个类似“抓手”“挂钩”的东西，可以方便我们对它进行“挂起和恢复”。
+
+
+
+### 协程 VM 参数
+
+```
+-Dkotlinx.coroutines.debug
+```
+
+完成这个设置后，当我们在 log 当中打印“Thread.currentThread().name”的时候，如果当前代码是运行在协程当中的，那么它就会带上协程的相关信息。
+
+
+
+### 如何启动协程
+
+#### launch 启动协程
+
+非阻塞,无返回结果
+
+
+
+launch 启动一个协程以后，并没有让协程为我们返回一个执行结果。
+
+这个函数的返回值是一个 Job，它其实代表的是协程的句柄（Handle），它并不能为我们返回协程的执行结果。
+
+```kotlin
+
+fun main() {
+    GlobalScope.launch {                
+        println("Coroutine started!")   
+        delay(1000L)                    
+        println("Hello World!")        
+    }
+
+    println("After launch!")           
+    Thread.sleep(2000L)               
+    println("Process end!")
+}
+
+/*
+输出结果：
+After launch!
+Coroutine started!
+Hello World!
+Process end!
+*/
+```
+
+函数签名:
+
+```kotlin
+public fun CoroutineScope.launch( // 扩展函数
+    context: CoroutineContext = EmptyCoroutineContext, // 协程的上下文
+    start: CoroutineStart = CoroutineStart.DEFAULT, // 协程的启动模式,最常使用的就是 DEFAULT、LAZY
+    block: suspend CoroutineScope.() -> Unit // 挂起函数,是 CoroutineScope 类的成员方法或是扩展方法
+): Job { ... }
+```
+
+
+
+
+
+#### runBlocking 启动协程
+
+阻塞式启动协程,有返回结果
+
+```kotlin
+fun main() {
+    val result = runBlocking {
+        delay(1000L)
+        // return@runBlocking 可写可不写
+        return@runBlocking "Coroutine done!" 
+    }
+
+    println("Result is: $result")
+}
+/*
+输出结果：
+Result is: Coroutine done!
+*/
+```
+
+函数签名:
+
+```kotlin
+public actual fun <T> runBlocking( // 普通的顶层函数,调用它的时候，不需要 CoroutineScope 的对象
+    context: CoroutineContext,
+    block: suspend CoroutineScope.() -> T): T { // 函数类型是有返回值类型 T 的，说明runBlocking 其实是可以从协程当中返回执行结果的
+...
+}
+```
+
+
+
+#### async 启动协程
+
+非阻塞式启动协程，有返回结果
+
+使用 async{} 创建协程，能通过它返回的句柄拿到协程的执行结果。
+
+```kotlin
+
+fun main() = runBlocking {
+    println("In runBlocking:${Thread.currentThread().name}")
+
+    val deferred: Deferred<String> = async {
+        println("In async:${Thread.currentThread().name}")
+        delay(1000L) // 模拟耗时操作
+        return@async "Task completed!"
+    }
+
+    println("After async:${Thread.currentThread().name}")
+
+    val result = deferred.await()
+    println("Result is: $result")
+}
+/*
+输出结果：
+In runBlocking:main @coroutine#1
+After async:main @coroutine#1 // 注意，它比“In async”先输出
+In async:main @coroutine#2
+Result is: Task completed!
+*/
+```
+
+函数签名:
+
+```kotlin
+public fun <T> CoroutineScope.async(
+    context: CoroutineContext = EmptyCoroutineContext,
+    start: CoroutineStart = CoroutineStart.DEFAULT,
+    block: suspend CoroutineScope.() -> T 
+): Deferred<T> {} 
+```
+
+
+
+### 深入理解 suspend
+
+suspend，是 Kotlin 当中的一个关键字，它主要的作用是用于定义“挂起函数”。
+
+
+
+挂起函数示例:
+
+```kotlin
+//挂起函数
+// ↓
+suspend fun getUserInfo(): String {
+    withContext(Dispatchers.IO) {
+        delay(1000L)
+    }
+    return "BoyCoder"
+}
+```
+
+挂起函数反编译成 Java，结果会是这样：
+
+```kotlin
+//                              Continuation 等价于 CallBack
+//                                         ↓         
+public static final Object getUserInfo(Continuation $completion) {
+  ...
+  return "BoyCoder";
+}
+```
+
+从反编译的结果来看，挂起函数确实变成了一个带有 CallBack 的函数，只是这个 CallBack 换了个名字，叫做 Continuation。
+
+
+
+Continuation 在 Kotlin 中的定义：
+
+```kotlin
+public interface Continuation<in T> {
+// ...
+
+//      相当于 CallBack的onSuccess   结果   
+//                 ↓                 ↓
+    public fun resumeWith(result: Result<T>)
+}
+
+interface CallBack {
+    void onSuccess(String response);
+}
+```
+
+Continuation 本质上也就是一个带有泛型参数的 CallBack
+
+
+
+
+
+Continuation 到底是什么？
+
+Continuation 的词源是 Continue。Continue 是“继续”的意思，Continuation 则是“接下来要做的事情”。放到程序中，Continuation 就代表了，“程序继续运行下去需要执行的代码”，“接下来要执行的代码”，或者是“剩下的代码”。
+
+
+
+CPS 是什么?
+
+这个“从挂起函数转换成 CallBack 函数”的过程，被叫做是 CPS 转换（Continuation-Passing-Style Transformation）。
+
+CPS 其实就是将程序接下来要执行的代码进行传递的一种模式。
+
+而 CPS 转换，就是将原本的同步挂起函数转换成 CallBack 异步代码的过程。这个转换是编译器在背后做的，我们程序员对此并无感知。
+
+
+
+协程之所以是非阻塞，是因为它支持“挂起和恢复”；而挂起和恢复的能力，主要是源自于“挂起函数”；而挂起函数是由 CPS 实现的，其中的 Continuation，本质上就是 Callback。
+
+
+
+
+
+### 协程也有生命周期???
+
+
+
+
+
+
+
 
 
 ## 其他
@@ -1682,4 +1956,357 @@ fun main() {
     saveSomething(null)
 }
 ```
+
+
+
+推测出这段代码的执行结果吗？
+
+```kotlin
+fun main() = runBlocking {
+    val deferred: Deferred<String> = async {
+        println("In async:${Thread.currentThread().name}")
+        delay(1000L) // 模拟耗时操作
+        println("In async after delay!")
+        return@async "Task completed!"
+    }
+
+    // 不再调用 deferred.await()
+    delay(2000L)
+}
+
+//In async ....
+//In async after delay....
+```
+
+
+
+
+
+凭什么挂起函数可以调用挂起函数，而普通函数不能调用挂起函数？它的底层逻辑到底什么？
+
+```kotlin
+public interface Continuation<in T> {
+    /**
+     * The context of the coroutine that corresponds to this continuation.
+     */
+    public val context: CoroutineContext
+
+    /**
+     * Resumes the execution of the corresponding coroutine passing a successful or failed [result] as the
+     * return value of the last suspension point.
+     */
+    public fun resumeWith(result: Result<T>)
+}
+```
+
+suspend函数的入参Continuation，看源码可以知道需要有一个协程上下文CoroutineContext信息，只有在协程作用域里才能传递。
+
+
+
+
+
+
+
+## 常用函数
+
+### takeIf
+
+- 返回值：如果**代码块predicate里面返回为true**，则返回这个对象本身，否则返回空
+- 使用注意：结果要用?判空
+
+```kotlin
+public inline fun <T> T.takeIf(predicate: (T) -> Boolean): T? {
+    contract {
+        callsInPlace(predicate, InvocationKind.EXACTLY_ONCE)
+    }
+    return if (predicate(this)) this else null
+}
+```
+
+e.g
+
+```kotlin
+val takeIf = "666".takeIf { it == "666" }
+println(takeIf) // 打印 666
+
+val takeIf2 = "666".takeIf { it == "2" }
+println(takeIf2) // 打印 null
+```
+
+### filter
+
+过滤
+
+```kotlin
+public inline fun <T> Iterable<T>.filter(predicate: (T) -> Boolean): List<T> {
+    return filterTo(ArrayList<T>(), predicate)
+}
+public inline fun <T, C : MutableCollection<in T>> Iterable<T>.filterTo(destination: C, predicate: (T) -> Boolean): C {
+    for (element in this) if (predicate(element)) destination.add(element)
+    return destination
+}
+```
+
+e.g
+
+```kotlin
+val filter = listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+    .filter {
+        if (it > 5) {
+            return@filter true
+        }
+        return@filter false
+    }
+println(filter)// 打印 [6, 7, 8, 9, 10]
+```
+
+
+
+
+
+### groupBy
+
+分组。即根据条件把集合拆分为为一个Map<K,List>类型的集合
+
+```kotlin
+public inline fun <T, K> Iterable<T>.groupBy(keySelector: (T) -> K): Map<K, List<T>> {
+    return groupByTo(LinkedHashMap<K, MutableList<T>>(), keySelector)
+}
+
+public inline fun <T, K, M : MutableMap<in K, MutableList<T>>> Iterable<T>.groupByTo(destination: M, keySelector: (T) -> K): M {
+    for (element in this) {
+        val key = keySelector(element)
+        val list = destination.getOrPut(key) { ArrayList<T>() }
+        list.add(element)
+    }
+    return destination
+}
+```
+
+e.g
+
+```kotlin
+val groupBy = listOf(1, 2, 3, 4, 5)
+    .groupBy { it }
+println(groupBy) // 打印(LinkedHashMap<Int,ArrayList<Int>>) {1=[1], 2=[2], 3=[3], 4=[4], 5=[5]}
+```
+
+
+
+### map
+
+变换
+
+```kotlin
+public inline fun <T, R> Iterable<T>.map(transform: (T) -> R): List<R> {
+    return mapTo(ArrayList<R>(collectionSizeOrDefault(10)), transform)
+}
+public inline fun <T, R, C : MutableCollection<in R>> Iterable<T>.mapTo(destination: C, transform: (T) -> R): C {
+    for (item in this)
+        destination.add(transform(item))
+    return destination
+}
+```
+
+e.g
+
+```kotlin
+val map = listOf(1, 2, 3, 4, 5)
+    .map { "$it" } //变换为字符串
+println(map) //打印字符串集合 [1, 2, 3, 4, 5]
+```
+
+### mapValues
+
+修改map的Value
+
+```kotlin
+public inline fun <K, V, R> Map<out K, V>.mapValues(transform: (Map.Entry<K, V>) -> R): Map<K, R> {
+    return mapValuesTo(LinkedHashMap<K, R>(mapCapacity(size)), transform) // .optimizeReadOnlyMap()
+}
+public inline fun <K, V, R, M : MutableMap<in K, in R>> Map<out K, V>.mapValuesTo(destination: M, transform: (Map.Entry<K, V>) -> R): M {
+    return entries.associateByTo(destination, { it.key }, transform)
+}
+```
+
+e.g
+
+```kotlin
+val numbersMap = mapOf("key1" to 1, "key2" to 2, "key3" to 3)
+val mapValues = numbersMap.mapValues {
+    it.key
+}
+println(mapValues) //打印 {key1=key1, key2=key2, key3=key3}
+```
+
+### maxBy
+
+返回最大值
+
+```kotlin
+public inline fun <T, R : Comparable<R>> Iterable<T>.maxBy(selector: (T) -> R): T? {
+    return maxByOrNull(selector)
+}
+public inline fun <T, R : Comparable<R>> Iterable<T>.maxByOrNull(selector: (T) -> R): T? {
+    val iterator = iterator()
+    if (!iterator.hasNext()) return null
+    var maxElem = iterator.next()
+    if (!iterator.hasNext()) return maxElem
+    var maxValue = selector(maxElem)
+    do {
+        val e = iterator.next()
+        val v = selector(e)
+        if (maxValue < v) {
+            maxElem = e
+            maxValue = v
+        }
+    } while (iterator.hasNext())
+    return maxElem
+}
+```
+
+e.g
+
+```kotlin
+val maxBy = listOf(1, 2, 3, 4, 5).maxBy {
+    it
+}
+println(maxBy)
+```
+
+### reduce
+
+聚合操作符
+
+```kotlin
+public inline fun <S, T : S> Iterable<T>.reduce(operation: (acc: S, T) -> S): S {
+    val iterator = this.iterator()
+    if (!iterator.hasNext()) throw UnsupportedOperationException("Empty collection can't be reduced.")
+    var accumulator: S = iterator.next()
+    while (iterator.hasNext()) {
+        accumulator = operation(accumulator, iterator.next())
+    }
+    return accumulator
+}
+```
+
+e.g
+
+```kotlin
+val numbers = listOf(1, 2, 3, 4)
+val sum = numbers.reduce { sum, element ->
+    // 1, 2
+    // 3, 3
+    // 6, 4
+    sum + element
+}
+println(sum) // 打印10
+```
+
+
+
+### toMutableList
+
+转换可变list
+
+```kotlin
+public fun <T> Collection<T>.toMutableList(): MutableList<T> {
+    return ArrayList(this)
+}
+```
+
+e.g
+
+```kotlin
+val numbers = listOf(1, 2, 3, 4) // 无法调用add
+val toMutableList = numbers.toMutableList()  // 可以调用add
+```
+
+
+
+### let
+
+```kotlin
+public inline fun <T, R> T.let(block: (T) -> R): R {
+    contract {
+        callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+    }
+    return block(this)
+}
+```
+
+e.g
+
+```kotlin
+val let = "1,2,3".let { // it
+    it.split(",") // 返回值
+}
+println(let) // 打印[1, 2, 3]
+```
+
+### run
+
+```kotlin
+public inline fun <T, R> T.run(block: T.() -> R): R {
+    contract {
+        callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+    }
+    return block()
+}
+```
+
+e.g
+
+```kotlin
+val run = "1,2,3".run { // this
+    split(",")  // 返回值，省去it
+}
+println(run) // 打印[1, 2, 3]
+```
+
+### also
+
+```kotlin
+public inline fun <T> T.also(block: (T) -> Unit): T {
+    contract {
+        callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+    }
+    block(this)
+    return this
+}
+```
+
+e.g
+
+```kotlin
+val also = "1,2,3".also { // it
+    println(it.length)
+    // 返回的还是原本对象
+}
+println(also) // 打印 1,2,3 ，返回的还是原本对象
+```
+
+### apply
+
+```kotlin
+public inline fun <T> T.apply(block: T.() -> Unit): T {
+    contract {
+        callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+    }
+    block()
+    return this
+}
+```
+
+e.g
+
+```kotlin
+val apply = "1,2,3".apply { // this
+    println(length) //省略 it
+    // 返回的还是原本对象
+}
+println(apply) // 打印 1,2,3 ，返回的还是原本对象
+```
+
+
 
