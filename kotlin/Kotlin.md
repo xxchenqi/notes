@@ -1520,6 +1520,10 @@ Process end!
 */
 ```
 
+launch 并不会阻塞线程的执行，甚至，我们可以认为 launch() 当中 Lambda 一定就是在函数调用之后才执行的。当然，在特殊情况下，这种行为模式也是可以打破的。
+
+
+
 函数签名:
 
 ```kotlin
@@ -1687,7 +1691,1349 @@ CPS 其实就是将程序接下来要执行的代码进行传递的一种模式�
 
 
 
-### 协程也有生命周期???
+### 协程生命周期
+
+New、Active、Completing、Cancelling、Completed、Cancelled 这些状态
+
+对于协程的 Job 来说，它有两种初始状态:
+
+如果 Job 是以懒加载的方式创建的，那么它的初始状态将会是 New；
+
+而如果一个协程是以非懒加载的方式创建的，那么它的初始状态就会是 Active。
+
+
+
+
+
+#### 等待和监听协程的结束事件
+
+invokeOnCompletion {} 的作用是 监听协程结束的事件。如果 job 被取消了，invokeOnCompletion {} 这个回调仍然会被调用。
+
+job.join() 其实是一个“挂起函数”，它的作用就是：挂起当前的程序执行流程，等待 job 当中的协程任务执行完毕，然后再恢复当前的程序执行流程。
+
+```kotlin
+fun main() = runBlocking {
+    suspend fun download() {
+        // 模拟下载任务
+        val time = (Random.nextDouble() * 1000).toLong()
+        logX("Delay time: = $time")
+        delay(time)
+    }
+    val job = launch(start = CoroutineStart.LAZY) {
+        logX("Coroutine start!")
+        download()
+        logX("Coroutine end!")
+    }
+    delay(500L)
+    job.log()
+    job.start()
+    job.log()
+    job.invokeOnCompletion {
+        job.log() // 协程结束以后就会调用这里的代码
+    }
+    job.join()      // 等待协程执行完毕
+    logX("Process end!")
+}
+
+/**
+ * 打印Job的状态信息
+ */
+fun Job.log() {
+    logX("""
+        isActive = $isActive
+        isCancelled = $isCancelled
+        isCompleted = $isCompleted
+    """.trimIndent())
+}
+
+/**
+ * 控制台输出带协程信息的log
+ */
+fun logX(any: Any?) {
+    println("""
+================================
+$any
+Thread:${Thread.currentThread().name}
+================================""".trimIndent())
+}
+
+/*
+运行结果：
+================================
+isActive = false
+isCancelled = false
+isCompleted = false
+Thread:main @coroutine#1
+================================
+================================
+isActive = true
+isCancelled = false
+isCompleted = false
+Thread:main @coroutine#1
+================================
+================================
+Coroutine start!
+Thread:main @coroutine#2
+================================
+================================
+Delay time: = 252
+Thread:main @coroutine#2
+================================
+================================
+Coroutine end!
+Thread:main @coroutine#2
+================================
+================================
+isActive = false
+isCancelled = false
+isCompleted = true
+Thread:main @coroutine#2
+================================
+================================
+Process end!
+Thread:main @coroutine#1
+================================
+*/
+```
+
+
+
+#### Job源码
+
+```kotlin
+public interface Job : CoroutineContext.Element {
+
+    // 省略部分代码
+
+    // ------------ 状态查询API ------------
+
+    public val isActive: Boolean
+
+    public val isCompleted: Boolean
+
+    public val isCancelled: Boolean
+
+    public fun getCancellationException(): CancellationException
+
+    // ------------ 操控状态API ------------
+
+    public fun start(): Boolean
+
+    public fun cancel(cause: CancellationException? = null)
+
+    public fun cancel(): Unit = cancel(null)
+
+    public fun cancel(cause: Throwable? = null): Boolean
+
+    // ------------ 等待状态API ------------
+
+    public suspend fun join()
+
+    public val onJoin: SelectClause0
+
+    // ------------ 完成状态回调API ------------
+
+    public fun invokeOnCompletion(handler: CompletionHandler): DisposableHandle
+
+    public fun invokeOnCompletion(
+        onCancelling: Boolean = false,
+        invokeImmediately: Boolean = true,
+        handler: CompletionHandler): DisposableHandle
+
+}
+```
+
+
+
+#### Deferred
+
+函数签名
+
+```kotlin
+public interface Deferred<out T> : Job {
+//          注意这里
+//            ↓
+    public suspend fun await(): T
+}
+```
+
+deferred.await() 这个方法，不仅可以帮助我们获取协程的执行结果，它还会阻塞当前协程的执行流程，直到协程任务执行完毕。在这一点的行为上，await() 和 join() 是类似的。
+
+
+
+#### Job 与结构化并发
+
+“结构化并发”就是：带有结构和层级的并发。
+
+```kotlin
+fun main() = runBlocking {
+    val parentJob: Job
+    var job1: Job? = null
+    var job2: Job? = null
+    var job3: Job? = null
+
+    parentJob = launch {
+        job1 = launch {
+            delay(1000L)
+        }
+
+        job2 = launch {
+            delay(3000L)
+        }
+
+        job3 = launch {
+            delay(5000L)
+        }
+    }
+
+    delay(500L)
+
+    parentJob.children.forEachIndexed { index, job ->
+        when (index) {
+            0 -> println("job1 === job is ${job1 === job}")
+            1 -> println("job2 === job is ${job2 === job}")
+            2 -> println("job3 === job is ${job3 === job}")
+        }
+    }
+
+    parentJob.join() // 这里会挂起大约5秒钟
+    logX("Process end!")
+}
+
+/*
+输出结果：
+job1 === job is true
+job2 === job is true
+job3 === job is true
+// 等待大约5秒钟
+================================
+Process end!
+Thread:main @coroutine#1
+================================
+*/
+```
+
+
+
+```kotlin
+public interface Job : CoroutineContext.Element {
+    // 省略部分代码
+
+    // ------------ parent-child ------------
+
+    public val children: Sequence<Job>
+
+    @InternalCoroutinesApi
+    public fun attachChild(child: ChildJob): ChildHandle
+}
+```
+
+每个 Job 对象，都会有一个 children 属性，它的类型是 Sequence，它是一个惰性的集合，我们可以对它进行遍历。
+
+而 attachChild() 则是一个协程内部的 API，用于绑定 ChildJob 的
+
+
+
+
+
+
+
+### Context
+
+```kotlin
+public fun CoroutineScope.launch(
+//                这里
+//                 ↓
+    context: CoroutineContext = EmptyCoroutineContext,
+    start: CoroutineStart = CoroutineStart.DEFAULT,
+    block: suspend CoroutineScope.() -> Unit
+): Job {}
+```
+
+默认值 EmptyCoroutineContext
+
+官方另外提供:
+
+- Dispatchers.Main：UI线程。
+- Dispatchers.Unconfined：代表无所谓，当前协程可能运行在任意线程之上。
+- Dispatchers.Default：用于 CPU 密集型任务的线程池。
+- Dispatchers.IO：用于 IO 密集型任务的线程池。
+
+注意：Dispatchers.IO 底层是可能复用 Dispatchers.Default 当中的线程
+
+
+
+
+
+#### Dispatchers.Unconfined不应该随意使用
+
+```kotlin
+fun main() = runBlocking {
+    logX("Before launch.") // 1
+    launch {
+        logX("In launch.") // 2
+        delay(1000L)
+        logX("End launch.") // 3
+    }
+    logX("After launch")   // 4
+}
+```
+
+运行顺序应该是：1、4、2、3
+
+```kotlin
+
+// 代码段8
+
+fun main() = runBlocking {
+    logX("Before launch.")  // 1
+//               变化在这里
+//                  ↓
+    launch(Dispatchers.Unconfined) {
+        logX("In launch.")  // 2
+        delay(1000L)
+        logX("End launch.") // 3
+    }
+    logX("After launch")    // 4
+}
+
+/*
+输出结果：
+================================
+Before launch.
+Thread:main @coroutine#1
+================================
+================================
+In launch.
+Thread:main @coroutine#2
+================================
+================================
+After launch
+Thread:main @coroutine#1
+================================
+================================
+End launch.
+Thread:kotlinx.coroutines.DefaultExecutor @coroutine#2
+================================
+*/
+```
+
+运行顺序就变成了：1、2、4、3
+
+Unconfined 代表的意思就是，当前协程可能运行在任何线程之上，不作强制要求。
+
+由此可见，Dispatchers.Unconfined 其实是很危险的。所以，我们不应该随意使用 Dispatchers.Unconfined。
+
+
+
+#### CoroutineScope
+
+CoroutineScope 只是对 CoroutineContext 做了一层封装而已，它的核心能力其实都来自于 CoroutineContext。
+
+而 CoroutineScope 最大的作用，就是可以方便我们批量控制协程。
+
+```kotlin
+// CoroutineScope 源码
+public interface CoroutineScope {
+    public val coroutineContext: CoroutineContext
+}
+```
+
+#### Job
+
+Job 继承自 CoroutineContext.Element，而 CoroutineContext.Element 仍然继承自 CoroutineContext，这就意味着 Job 是间接继承自 CoroutineContext 的。所以说，Job 确实是一个真正的 CoroutineContext。
+
+```kotlin
+public interface Job : CoroutineContext.Element {}
+
+public interface CoroutineContext {
+    public interface Element : CoroutineContext {}
+}
+```
+
+#### CoroutineContext
+
+```kotlin
+// 类似map的接口设计
+public interface CoroutineContext {
+
+    public operator fun <E : Element> get(key: Key<E>): E?
+
+    public operator fun plus(context: CoroutineContext): CoroutineContext {}
+
+    public fun minusKey(key: Key<*>): CoroutineContext
+
+    public fun <R> fold(initial: R, operation: (R, Element) -> R): R
+
+    public interface Key<E : Element>
+}
+```
+
+
+
+```kotlin
+val mySingleDispatcher = Executors.newSingleThreadExecutor { Thread(it, "MySingleThread").apply { isDaemon = true }}.asCoroutineDispatcher()
+
+@OptIn(ExperimentalStdlibApi::class)
+fun main() = runBlocking {
+    // 使用了“Job() + mySingleDispatcher”这样的方式创建 CoroutineScope，代码之所以这么写，是因为 CoroutineContext 的 plus() 进行了操作符重载。
+    val scope = CoroutineScope(Job() + mySingleDispatcher)
+
+    scope.launch {
+        // 使用了“coroutineContext[CoroutineDispatcher]”这样的方式，访问当前协程所对应的 Dispatcher。这也是因为 CoroutineContext 的 get()，支持了操作符重载。
+        logX(coroutineContext[CoroutineDispatcher] == mySingleDispatcher)
+        delay(1000L)
+        logX("First end!")  // 不会执行
+    }
+
+    delay(500L)
+    scope.cancel()
+    delay(1000L)
+}
+```
+
+
+
+Dispatcher 本身也是 CoroutineContext，不然它怎么可以实现“Job() + mySingleDispatcher”这样的写法呢？
+
+最重要的是，当我们以这样的方式创建出 scope 以后，后续创建的协程就全部都运行在 mySingleDispatcher 这个线程之上了。
+
+
+
+#### Dispatcher 到底是如何跟 CoroutineContext 建立关系的呢？
+
+Dispatchers 其实是一个 object 单例，它的内部成员的类型是 CoroutineDispatcher，而它又是继承自 ContinuationInterceptor，这个类则是实现了 CoroutineContext.Element 接口。由此可见，Dispatcher 确实就是 CoroutineContext。
+
+```kotlin
+public actual object Dispatchers {
+
+    public actual val Default: CoroutineDispatcher = DefaultScheduler
+
+    public actual val Main: MainCoroutineDispatcher get() = MainDispatcherLoader.dispatcher
+
+    public actual val Unconfined: CoroutineDispatcher = kotlinx.coroutines.Unconfined
+
+    public val IO: CoroutineDispatcher = DefaultIoScheduler
+
+    public fun shutdown() {    }
+}
+
+public abstract class CoroutineDispatcher :
+    AbstractCoroutineContextElement(ContinuationInterceptor), ContinuationInterceptor {}
+
+public interface ContinuationInterceptor : CoroutineContext.Element {}
+```
+
+
+
+#### CoroutineName
+
+指定协程名称
+
+```kotlin
+@OptIn(ExperimentalStdlibApi::class)
+fun main() = runBlocking {
+    val scope = CoroutineScope(Job() + mySingleDispatcher)
+    // 协程的名字
+    scope.launch(CoroutineName("MyFirstCoroutine!")) {
+        logX(coroutineContext[CoroutineDispatcher] == mySingleDispatcher)
+        delay(1000L)
+        logX("First end!")
+    }
+
+    delay(500L)
+    scope.cancel()
+    delay(1000L)
+}
+
+/*
+输出结果：
+
+================================
+true
+Thread:MySingleThread @MyFirstCoroutine!#2  // 其中的数字“2”，其实是一个自增的唯一 ID。
+================================
+*/
+```
+
+
+
+#### CoroutineExceptionHandler
+
+负责处理协程当中的异常。
+
+```kotlin
+public interface CoroutineExceptionHandler : CoroutineContext.Element {
+
+    public companion object Key : CoroutineContext.Key<CoroutineExceptionHandler>
+
+    public fun handleException(context: CoroutineContext, exception: Throwable)
+}
+```
+
+
+
+```kotlin
+//  这里使用了挂起函数版本的main()
+suspend fun main() {
+    val myExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        println("Catch exception: $throwable")
+    }
+    val scope = CoroutineScope(Job() + mySingleDispatcher)
+
+    val job = scope.launch(myExceptionHandler) {
+        val s: String? = null
+        s!!.length // 空指针异常
+    }
+
+    job.join()
+}
+/*
+输出结果：
+Catch exception: java.lang.NullPointerException
+*/
+```
+
+
+
+### suspendCoroutine
+
+Kotlin 官方提供的一个顶层函数：suspendCoroutine{}，它的函数签名是这样的：
+
+```
+public suspend inline fun <T> suspendCoroutine(crossinline block: (Continuation<T>) -> Unit): T {
+    // 省略细节
+}
+```
+
+
+
+```kotlin
+suspend fun <T : Any> KtCall<T>.await(): T =
+    suspendCoroutine { continuation ->
+        call(object : Callback<T> {
+            override fun onSuccess(data: T) {
+                continuation.resume(data) // 成功回调
+            }
+
+            override fun onFail(throwable: Throwable) {
+                continuation.resumeWithException(throwable)// 失败回到
+            }
+        })
+    }
+```
+
+它是一个挂起函数，也是一个高阶函数
+
+缺点：不支持取消
+
+
+
+### suspendCancellableCoroutine
+
+可以往 continuation 对象上面设置一个监听：invokeOnCancellation{}，它代表当前的协程被取消了
+
+```kotlin
+
+suspend fun <T : Any> KtCall<T>.await(): T =
+//            变化1
+//              ↓
+    suspendCancellableCoroutine { continuation ->
+        val call = call(object : Callback<T> {
+            override fun onSuccess(data: T) {
+                println("Request success!")
+                continuation.resume(data)
+            }
+
+            override fun onFail(throwable: Throwable) {
+                println("Request fail!：$throwable")
+                continuation.resumeWithException(throwable)
+            }
+        })
+
+//            变化2
+//              ↓
+        continuation.invokeOnCancellation {
+            println("Call cancelled!")
+            call.cancel()
+        }
+    }
+```
+
+两大优势：
+
+第一，它可以避免不必要的挂起，提升运行效率；
+
+第二，它可以避免不必要的资源浪费，改善软件的综合指标。
+
+
+
+
+
+
+
+### Channel
+
+```kotlin
+fun main() = runBlocking {
+    val channel = Channel<Int>()
+
+    launch {
+        (1..3).forEach {
+            channel.send(it)
+            logX("Send: $it")
+        }
+		// channel 是一种协程资源，在用完 channel 以后，如果我们不去主动关闭它的话，是会造成不必要的资源浪费的。
+        // 如果我们忘记调用“channel.close()”，程序将永远不会停下来。
+        channel.close()
+    }
+
+    launch {
+        for (i in channel) {
+            logX("Receive: $i")
+        }
+    }
+
+    logX("end")
+}
+```
+
+
+
+源码
+
+```kotlin
+public fun <E> Channel(
+    capacity: Int = RENDEZVOUS,
+    onBufferOverflow: BufferOverflow = BufferOverflow.SUSPEND,
+    onUndeliveredElement: ((E) -> Unit)? = null
+): Channel<E> {}
+```
+
+参数1：capacity，代表了管道的容量。
+
+- RENDEZVOUS（默认），代表了 Channel 的容量为 0；
+- UNLIMITED，代表了无限容量；
+- CONFLATED，代表了容量为 1，新的数据会替代旧的数据；
+- BUFFERED，代表了具备一定的缓存容量，默认情况下是 64，具体容量由这个 VM 参数决定 "kotlinx.coroutines.channels.defaultBuffer"。
+
+参数2：onBufferOverflow，指当我们指定了 capacity 的容量，等管道的容量满了时，Channel 的应对策略是怎么样的。
+
+- SUSPEND（默认），当管道的容量满了以后，如果发送方还要继续发送，我们就会挂起当前的 send() 方法。由于它是一个挂起函数，所以我们可以以非阻塞的方式，将发送方的执行流程挂起，等管道中有了空闲位置以后再恢复。
+- DROP_OLDEST，就是丢弃最旧的那条数据，然后发送新的数据；
+- DROP_LATEST，丢弃最新的那条数据。这里要注意，这个动作的含义是丢弃当前正准备发送的那条数据，而管道中的内容将维持不变。
+
+参数3：onUndeliveredElement，异常处理回调
+
+发送出去的 Channel 数据无法被接收方处理的时候，就可以通过 onUndeliveredElement 这个回调，来进行监听。
+
+
+
+#### produce
+
+使用 produce{} 以后，就不用再去调用 close() 方法了，因为 produce{} 会自动帮我们去调用 close() 方法。
+
+```kotlin
+fun main() = runBlocking {
+    // produce
+    val channel: ReceiveChannel<Int> = produce {
+        (1..3).forEach {
+            send(it)
+            logX("Send: $it")
+        }
+    }
+
+    launch {
+        // 3，接收数据
+        for (i in channel) {
+            logX("Receive: $i")
+        }
+    }
+
+    logX("end")
+}
+```
+
+
+
+#### 为什么不推荐使用receive
+
+```kotlin
+fun main() = runBlocking {
+    // 1，创建管道
+    val channel: ReceiveChannel<Int> = produce {
+        // 发送3条数据
+        (1..3).forEach {
+            send(it)
+        }
+    }
+
+    // 调用4次receive()
+    channel.receive() // 1
+    channel.receive() // 2
+    channel.receive() // 3
+    channel.receive() // 异常
+
+    logX("end")
+}
+
+/*
+输出结果：
+ClosedReceiveChannelException: Channel was closed
+*/
+```
+
+```kotlin
+fun main() = runBlocking {
+    val channel: Channel<Int> = Channel()
+
+    launch {
+        (1..3).forEach {
+            channel.send(it)
+        }
+    }
+
+    // 调用4次receive()
+    channel.receive()       // 1
+    println("Receive: 1")
+    channel.receive()       // 2
+    println("Receive: 2")
+    channel.receive()       // 3
+    println("Receive: 3")
+    channel.receive()       // 永远挂起
+
+    logX("end")
+}
+```
+
+从上面2段代码可以看出，直接使用 receive() 是很容易出问题的。
+
+
+
+
+
+##### isClosedForReceive、isClosedForSend
+
+对于发送方，我们可以使用“isClosedForSend”来判断当前的 Channel 是否关闭；
+
+对于接收方来说，我们可以用“isClosedForReceive”来判断当前的 Channel 是否关闭。
+
+```kotlin
+fun main() = runBlocking {
+    // 因为，当你为管道指定了 capacity 以后，以上的判断方式将会变得不可靠！
+    val channel: ReceiveChannel<Int> = produce(capacity = 3) {
+        (1..300).forEach {
+            send(it)
+            println("Send $it")
+        }
+    }
+
+    while (!channel.isClosedForReceive) {
+        val i = channel.receive()
+        println("Receive $i")
+    }
+
+    logX("end")
+}
+
+/*
+输出结果
+// 省略部分
+Receive 300
+Send 300
+ClosedReceiveChannelException: Channel was closed
+*/
+```
+
+所以，最好不要用 channel.receive()。即使配合 isClosedForReceive 这个判断条件，我们直接调用 channel.receive() 仍然是一件非常危险的事情！
+
+
+
+#### 推荐使用consumeEach和for读取Channel 
+
+当我们想要读取 Channel 当中的数据时，我们一定要使用 for 循环，或者是 channel.consumeEach {}，千万不要直接调用 channel.receive()。
+
+```kotlin
+fun main() = runBlocking {
+    val channel: ReceiveChannel<Int> = produce(capacity = 3) {
+        (1..300).forEach {
+            send(it)
+            println("Send $it")
+        }
+    }
+
+    // 变化在这里
+    channel.consumeEach {
+        println("Receive $it")
+    }
+
+    logX("end")
+}
+
+/*
+输出结果：
+
+正常
+*/
+```
+
+
+
+补充：在某些特殊场景下，如果我们必须要自己来调用 channel.receive()，那么可以考虑使用 receiveCatching()，它可以防止异常发生。
+
+
+
+#### 为什么说 Channel 是“热”的？
+
+不管有没有接收方，发送方都会工作”的模式，就是我们将其认定为“热”的原因。
+
+#### 源码
+
+```kotlin
+public interface Channel<E> : SendChannel<E>, ReceiveChannel<E> {}
+```
+
+```kotlin
+public interface SendChannel<in E> 
+    public val isClosedForSend: Boolean
+
+    public suspend fun send(element: E)
+
+    // 1，select相关
+    public val onSend: SelectClause2<E, SendChannel<E>>
+
+    // 2，非挂起函数的接收
+    public fun trySend(element: E): ChannelResult<Unit>
+
+    public fun close(cause: Throwable? = null): Boolean
+
+    public fun invokeOnClose(handler: (cause: Throwable?) -> Unit)
+
+}
+
+public interface ReceiveChannel<out E> {
+
+    public val isClosedForReceive: Boolean
+
+    public val isEmpty: Boolean
+
+    public suspend fun receive(): E
+
+    public suspend fun receiveCatching(): ChannelResult<E>
+    // 3，select相关
+    public val onReceive: SelectClause1<E>
+    // 4，select相关
+    public val onReceiveCatching: SelectClause1<ChannelResult<E>>
+
+    // 5，非挂起函数的接收
+    public fun tryReceive(): ChannelResult<E>
+
+    public operator fun iterator(): ChannelIterator<E>
+
+    public fun cancel(cause: CancellationException? = null)
+}
+```
+
+
+
+### Flow
+
+```kotlin
+fun main() = runBlocking {
+    // 或者可以使用 flowOf(1, 2, 3, 4, 5)
+    flow {                  // 上游，发源地
+        emit(1)             // 挂起函数
+        emit(2)
+        emit(3)
+        emit(4)
+        emit(5)
+    }.filter { it > 2 }     // 中转站1
+        .map { it * 2 }     // 中转站2
+        .take(2)            // 中转站3
+        .collect{           // 下游
+            println(it)
+        }
+}
+
+/*
+输出结果：                       
+6
+8
+*/
+```
+
+#### Flow和List互相转换
+
+```kotlin
+fun main() = runBlocking {
+    // Flow转List
+    flowOf(1, 2, 3, 4, 5)
+        .toList()
+        .filter { it > 2 }
+        .map { it * 2 }
+        .take(2)
+        .forEach {
+            println(it)
+        }
+
+    // List转Flow
+    listOf(1, 2, 3, 4, 5)
+        .asFlow()
+        .filter { it > 2 }
+        .map { it * 2 }
+        .take(2)
+        .collect {
+            println(it)
+        }
+}
+
+/*
+输出结果
+6
+8
+6
+8
+*/
+```
+
+#### 生命周期
+
+onStart，它的作用是注册一个监听事件：当 flow 启动以后，它就会被回调。
+
+onCompletion 只会在 Flow 数据流执行完毕以后，才会回调。
+
+onStart 和 onCompletion执行顺序，跟它在 Flow 当中的位置无关。
+
+
+
+#### catch 异常处理
+
+catch 的作用域，仅限于 catch 的上游。
+
+```kotlin
+fun main() = runBlocking {
+    val flow = flow {
+        emit(1)
+        emit(2)
+        throw IllegalStateException()
+        emit(3)
+    }
+
+    flow.map { it * 2 }
+        .catch { println("catch: $it") } // 注意这里
+        .collect {
+            println(it)
+        }
+}
+/*
+输出结果：
+2
+4
+catch: java.lang.IllegalStateException
+*/
+```
+
+
+
+#### 切换 Context：flowOn、launchIn
+
+flowOn：操作符也是和它的位置强相关的。它的作用域跟前面的 catch 类似：flowOn 仅限于它的上游。
+
+```kotlin
+fun main() = runBlocking {
+    val flow = flow {
+        logX("Start")
+        emit(1)
+        logX("Emit: 1")
+        emit(2)
+        logX("Emit: 2")
+        emit(3)
+        logX("Emit: 3")
+    }
+
+    flow.filter {
+            logX("Filter: $it")
+            it > 2
+        }
+        .flowOn(Dispatchers.IO)  // 注意这里
+        .collect {
+            logX("Collect $it")
+        }
+}
+
+/*
+输出结果
+================================
+Start
+Thread:DefaultDispatcher-worker-1 @coroutine#2
+================================
+================================
+Filter: 1
+Thread:DefaultDispatcher-worker-1 @coroutine#2
+================================
+================================
+Emit: 1
+Thread:DefaultDispatcher-worker-1 @coroutine#2
+================================
+================================
+Filter: 2
+Thread:DefaultDispatcher-worker-1 @coroutine#2
+================================
+================================
+Emit: 2
+Thread:DefaultDispatcher-worker-1 @coroutine#2
+================================
+================================
+Filter: 3
+Thread:DefaultDispatcher-worker-1 @coroutine#2
+================================
+================================
+Emit: 3
+Thread:DefaultDispatcher-worker-1 @coroutine#2
+================================
+================================
+Collect 3
+Thread:main @coroutine#1
+================================
+```
+
+launchIn：
+
+```kotlin
+val scope = CoroutineScope(mySingleDispatcher)
+flow.flowOn(Dispatchers.IO)
+    .filter {
+        logX("Filter: $it")
+        it > 2
+    }
+    .onEach { // 借助了 onEach{} 来实现类似 collect{} 的功能
+        logX("onEach $it")
+    }
+    .launchIn(scope)
+
+/*
+输出结果：
+onEach{}将运行在MySingleThread
+filter{}运行在MySingleThread
+flow{}运行在DefaultDispatcher
+*/
+```
+
+
+
+launchIn 的源代码
+
+```kotlin
+public fun <T> Flow<T>.launchIn(scope: CoroutineScope): Job = scope.launch {
+    collect() // tail-call
+}
+```
+
+
+
+注：withContext 在 Flow 当中是不被推荐的，即使要用，也应该谨慎再谨慎。
+
+
+
+#### 为什么说 Flow 是“冷”的？
+
+Channel 之所以被认为是“热”的原因，是因为不管有没有接收方，发送方都会工作。
+
+Flow 被认为是“冷”的原因，就是因为只有调用终止操作符之后，Flow 才会开始工作。
+
+Flow 一次只会处理一条数据。虽然它也是 Flow“冷”的一种表现，但这个特性准确来说是“懒”。
+
+```kotlin
+fun main() = runBlocking {
+    flow {
+        println("emit: 3")
+        emit(3)
+        println("emit: 4")
+        emit(4)
+        println("emit: 5")
+        emit(5)
+    }.filter {
+        println("filter: $it")
+        it > 2
+    }.map {
+        println("map: $it")
+        it * 2
+    }.collect {
+        println("collect: $it")
+    }
+}
+/*
+输出结果：
+emit: 3
+filter: 3
+map: 3
+collect: 6
+emit: 4
+filter: 4
+map: 4
+collect: 8
+emit: 5
+filter: 5
+map: 5
+collect: 10
+*/
+```
+
+
+
+
+
+
+
+
+
+### Select
+
+select 就是选择“更快的结果”
+
+可以用 async 搭配 select 来使用。async 可以实现并发，select 则可以选择最快的结果。
+
+```kotlin
+fun main() = runBlocking {
+    val startTime = System.currentTimeMillis()
+    val productId = "xxxId"
+    //          1，注意这里
+    //               ↓
+    val product = select<Product?> {
+        // 2，注意这里
+        async { getCacheInfo(productId) }
+            .onAwait { // 注意了，这里我们用的 onAwait{}，而不是 await()。
+                it
+            }
+        // 4，注意这里
+        async { getNetworkInfo(productId) }
+            .onAwait {  // 注意了，这里我们用的 onAwait{}，而不是 await()。
+                it
+            }
+    }
+
+    if (product != null) {
+        updateUI(product)
+        println("Time cost: ${System.currentTimeMillis() - startTime}")
+    }
+}
+
+/*
+输出结果
+xxxId==9.9
+Time cost: 127
+*/
+```
+
+
+
+如果是缓存信息优先返回，需要进一步更新最新信息。
+
+```kotlin
+fun main() = runBlocking {
+    suspend fun getCacheInfo(productId: String): Product? {
+        delay(100L)
+        return Product(productId, 9.9)
+    }
+
+    suspend fun getNetworkInfo(productId: String): Product? {
+        delay(200L)
+        return Product(productId, 9.8)
+    }
+
+    fun updateUI(product: Product) {
+        println("${product.productId}==${product.price}")
+    }
+
+    val startTime = System.currentTimeMillis()
+    val productId = "xxxId"
+
+    // 1，缓存和网络，并发执行
+    val cacheDeferred = async { getCacheInfo(productId) }
+    val latestDeferred = async { getNetworkInfo(productId) }
+
+    // 2，在缓存和网络中间，选择最快的结果
+    val product = select<Product?> {
+        cacheDeferred.onAwait {
+                it?.copy(isCache = true)
+            }
+
+        latestDeferred.onAwait {
+                it?.copy(isCache = false)
+            }
+    }
+
+    // 3，更新UI
+    if (product != null) {
+        updateUI(product)
+        println("Time cost: ${System.currentTimeMillis() - startTime}")
+    }
+
+    // 4，如果当前结果是缓存，那么再取最新的网络服务结果
+    if (product != null && product.isCache) {
+        val latest = latestDeferred.await()?: return@runBlocking
+        updateUI(latest)
+        println("Time cost: ${System.currentTimeMillis() - startTime}")
+    }
+}
+
+/*
+输出结果：
+xxxId==9.9
+Time cost: 120
+xxxId==9.8
+Time cost: 220
+*/
+```
+
+
+
+#### select 和 Channel
+
+```kotlin
+fun main() = runBlocking {
+    val startTime = System.currentTimeMillis()
+    val channel1 = produce {
+        send("1")
+        delay(200L)
+        send("2")
+        delay(200L)
+        send("3")
+        delay(150L)
+    }
+
+    val channel2 = produce {
+        delay(100L)
+        send("a")
+        delay(200L)
+        send("b")
+        delay(200L)
+        send("c")
+    }
+
+    suspend fun selectChannel(channel1: ReceiveChannel<String>, channel2: ReceiveChannel<String>): String = select<String> {
+        // 1， 选择channel1
+        channel1.onReceive{
+            it.also { println(it) }
+        }
+        // 2， 选择channel1
+        channel2.onReceive{
+            it.also { println(it) }
+        }
+    }
+
+    repeat(6){// 3， 选择6次结果
+        selectChannel(channel1, channel2)
+    }
+
+    println("Time cost: ${System.currentTimeMillis() - startTime}")
+}
+
+/*
+输出结果
+1
+a
+2
+b
+3
+c
+Time cost: 540
+*/
+```
+
+onReceiveCatching解决异常问题
+
+```kotlin
+
+// 代码段13
+
+fun main() = runBlocking {
+    val startTime = System.currentTimeMillis()
+    val channel1 = produce<String> {
+        delay(15000L)
+    }
+
+    val channel2 = produce {
+        delay(100L)
+        send("a")
+        delay(200L)
+        send("b")
+        delay(200L)
+        send("c")
+    }
+
+    suspend fun selectChannel(channel1: ReceiveChannel<String>, channel2: ReceiveChannel<String>): String =
+        select<String> {
+            channel1.onReceiveCatching {
+                it.getOrNull() ?: "channel1 is closed!"
+            }
+            channel2.onReceiveCatching {
+                it.getOrNull() ?: "channel2 is closed!"
+            }
+        }
+
+    repeat(6) {
+        val result = selectChannel(channel1, channel2)
+        println(result)
+    }
+
+	
+    channel1.cancel()
+    channel2.cancel()
+
+    println("Time cost: ${System.currentTimeMillis() - startTime}")
+}
+```
+
+
+
+当 Deferred、Channel 与 select 配合的时候，它们原本的 API 会多一个 on 前缀。
+
+```kotlin
+public interface Deferred : CoroutineContext.Element {
+    public suspend fun join()
+    public suspend fun await(): T
+
+    // select相关  
+    public val onJoin: SelectClause0
+    public val onAwait: SelectClause1<T>
+}
+
+public interface SendChannel<in E> 
+    public suspend fun send(element: E)
+
+    // select相关
+    public val onSend: SelectClause2<E, SendChannel<E>>
+
+}
+
+public interface ReceiveChannel<out E> {
+    public suspend fun receive(): E
+
+    public suspend fun receiveCatching(): ChannelResult<E>
+    // select相关
+    public val onReceive: SelectClause1<E>
+    public val onReceiveCatching: SelectClause1<ChannelResult<E>>
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1749,12 +3095,6 @@ public final class Person {
 ### 2.Kotlin 接口的“成员属性”是存在一定的局限性的
 
 接口的属性： 1.不能设置初始值 2.val可以重写get,var的get和set都不能重写
-
-
-
-
-
-
 
 [JMH](https://github.com/openjdk/jmh)（Java Microbenchmark Harness）
 
@@ -2002,6 +3342,93 @@ public interface Continuation<in T> {
 suspend函数的入参Continuation，看源码可以知道需要有一个协程上下文CoroutineContext信息，只有在协程作用域里才能传递。
 
 
+
+
+
+执行结果?
+
+```kotlin
+fun main() = runBlocking {
+    val job = launch {
+        logX("First coroutine start!")
+        delay(1000L)
+        logX("First coroutine end!")
+    }
+
+    job.join()      
+    val job2 = launch(job) {
+        logX("Second coroutine start!")
+        delay(1000L)
+        logX("Second coroutine end!")
+    }
+    job2.join()
+    logX("Process end!")
+}
+```
+
+```
+代码的执行结果是：
+> First coroutine start!
+> First coroutine end!
+> Process end!
+可见 job2 的代码块并没有被执行。
+
+分析原因：
+分别打印出 job2 在 job2.join() 前后的状态：
+
+job2 before join: isActive === false
+job2 before join: isCancelled === true
+job2 before join: isCompleted === false
+// job2.join()
+job2 after join: isActive === false
+job2 after join: isCancelled === true
+job2 after join: isCompleted === true
+
+可见 job2 创建后并没有被激活。
+
+val job2 = launch(job) {} 这一行代码指示 job2 将运行在 job 的 CoroutineContext 之下, 而之前的代码 job.join() 时 job 已经执行完毕了，根据协程结构化的特性，job2 在创建后不会被激活，并且标记为Cancelled，然后执行 job2 时，发现 job2 未被激活，并且已经被取消，则不会执行 job2 的代码块，但是会将 job2 标记为 Completed
+```
+
+
+
+“挂起函数”与 CoroutineContext 也有着紧密的联系?
+
+```kotlin
+import kotlinx.coroutines.*
+import kotlin.coroutines.coroutineContext
+
+//                        挂起函数能可以访问协程上下文吗？
+//                                 ↓                              
+suspend fun testContext() = coroutineContext
+
+fun main() = runBlocking {
+    println(testContext())
+}
+```
+
+suspend方法需要在协程中执行，协程又一定有上下文，所以可以访问的到~ 也就是在suspend方法中可以访问当前协程上下文，并且拿到一些有用的信息
+
+
+
+Flow 当中直接使用 withContext{}，是很容易出现问题的
+
+```kotlin
+fun main() = runBlocking {
+    flow {
+        withContext(Dispatchers.IO) {
+            emit(1)
+        }
+    }.map { it * 2 }
+        .collect()
+}
+
+/*
+输出结果
+IllegalStateException: Flow invariant is violated
+*/
+```
+
+不允许在 withContext 里 调用 emit() 是因为 emit() 默认不是线程安全的，而且还给出了一种解决方案，那就是使用 channel 来处理。
 
 
 
@@ -2308,5 +3735,32 @@ val apply = "1,2,3".apply { // this
 println(apply) // 打印 1,2,3 ，返回的还是原本对象
 ```
 
+### take
 
+```kotlin
+public fun <T> Iterable<T>.take(n: Int): List<T> {
+    require(n >= 0) { "Requested element count $n is less than zero." }
+    if (n == 0) return emptyList()
+    if (this is Collection<T>) {
+        if (n >= size) return toList()
+        if (n == 1) return listOf(first())
+    }
+    var count = 0
+    val list = ArrayList<T>(n)
+    for (item in this) {
+        list.add(item)
+        if (++count == n)
+            break
+    }
+    return list.optimizeReadOnlyList()
+}
+```
+
+e.g
+
+```kotlin
+val listOf = listOf(1, 2, 3, 4)
+val take = listOf.take(2)
+println(take) // 打印[1, 2]
+```
 
