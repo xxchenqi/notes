@@ -3021,6 +3021,151 @@ public interface ReceiveChannel<out E> {
 
 
 
+### 协程与并发
+
+#### 1.单线程并发
+
+#### 2.Mutex
+
+Kotlin 官方提供了“非阻塞式”的锁：Mutex
+
+Mutex 对比 JDK 当中的锁，最大的优势就在于支持挂起和恢复。
+
+```kotlin
+fun main() = runBlocking {
+    val mutex = Mutex()
+
+    var i = 0
+    val jobs = mutableListOf<Job>()
+
+    repeat(10) {
+        val job = launch(Dispatchers.Default) {
+            repeat(1000) {
+                // 变化在这里
+                mutex.lock()
+                i++
+                mutex.unlock()
+            }
+        }
+        jobs.add(job)
+    }
+
+    jobs.joinAll()
+
+    println("i = $i")
+}
+```
+
+
+
+```kotlin
+public interface Mutex {
+    public val isLocked: Boolean
+
+    //     注意这里
+    //        ↓
+    public suspend fun lock(owner: Any? = null)
+
+    public fun unlock(owner: Any? = null)
+}
+```
+
+Mutex 是一个接口，它的 lock() 方法其实是一个挂起函数。而这就是实现非阻塞式同步锁的根本原因。
+
+
+
+异常处理
+
+withLock{} 的本质，其实是在 finally{} 当中调用了 unlock()。
+
+```kotlin
+
+// 代码段10
+fun main() = runBlocking {
+    val mutex = Mutex()
+
+    var i = 0
+    val jobs = mutableListOf<Job>()
+
+    repeat(10) {
+        val job = launch(Dispatchers.Default) {
+            repeat(1000) {
+                // 变化在这里
+                mutex.withLock {
+                    i++
+                }
+            }
+        }
+        jobs.add(job)
+    }
+
+    jobs.joinAll()
+
+    println("i = $i")
+}
+
+// withLock的定义
+public suspend inline fun <T> Mutex.withLock(owner: Any? = null, action: () -> T): T {
+    lock(owner)
+    try {
+        return action()
+    } finally {
+        unlock(owner)
+    }
+}
+```
+
+
+
+
+
+#### 3.Actor
+
+基于 Channel 管道消息实现
+
+```kotlin
+sealed class Msg
+object AddMsg : Msg()
+
+class ResultMsg(
+    val result: CompletableDeferred<Int>
+) : Msg()
+
+fun main() = runBlocking {
+
+    suspend fun addActor() = actor<Msg> {
+        var counter = 0
+        for (msg in channel) {
+            when (msg) {
+                is AddMsg -> counter++
+                is ResultMsg -> msg.result.complete(counter)
+            }
+        }
+    }
+
+    val actor = addActor()
+    val jobs = mutableListOf<Job>()
+
+    repeat(10) {
+        val job = launch(Dispatchers.Default) {
+            repeat(1000) {
+                actor.send(AddMsg)
+            }
+        }
+        jobs.add(job)
+    }
+
+    jobs.joinAll()
+
+    val deferred = CompletableDeferred<Int>()
+    actor.send(ResultMsg(deferred))
+
+    val result = deferred.await()
+    actor.close()
+
+    println("i = ${result}")
+}
+```
 
 
 
@@ -3034,8 +3179,405 @@ public interface ReceiveChannel<out E> {
 
 
 
+#### 4.函数式思维
+
+借助函数式思维，实现无副作用和不变性以后，并发代码也会随之变得安全。
 
 
+
+### 异常
+
+在 Kotlin 协程当中，我们通常把异常分为两大类，一类是取消异常（CancellationException），另一类是其他异常。
+
+#### 取消异常
+
+##### cancel() 不被响应
+
+对于协程任务的取消，是需要互相协作的。协程外部取消，协程内部需要做出响应才行
+
+```kotlin
+fun main() = runBlocking {
+    val job = launch(Dispatchers.Default) {
+        var i = 0
+        while (true) {
+            Thread.sleep(500L)
+            i ++
+            println("i = $i")
+        }
+    }
+
+    delay(2000L)
+
+    job.cancel()
+    job.join()
+
+    println("End")
+}
+
+/*
+输出结果
+
+i = 1
+i = 2
+i = 3
+i = 4
+i = 5
+// 永远停不下来
+*/
+```
+
+修复
+
+```kotlin
+fun main() = runBlocking {
+    val job = launch(Dispatchers.Default) {
+        var i = 0
+        // 变化在这里
+        while (isActive) {
+            Thread.sleep(500L)
+            i ++
+            println("i = $i")
+        }
+    }
+
+    delay(2000L)
+
+    job.cancel()
+    job.join()
+
+    println("End")
+}
+
+/*
+输出结果
+i = 1
+i = 2
+i = 3
+i = 4
+i = 5
+End
+*/
+```
+
+##### 结构被破坏
+
+使用了 launch(Job()){}这种创建方式，就打破了原有的协程结构。
+
+“子协程 1”已经不是 parentJob 的子协程了，而对应的，它的父 Job 是我们在 launch 当中传入的 Job() 对象。所以，在这种情况下，当我们调用 parentJob.cancel() 的时候，自然也就无法取消“子协程 1”了。
+
+```kotlin
+val fixedDispatcher = Executors.newFixedThreadPool(2) {
+    Thread(it, "MyFixedThread").apply { isDaemon = false }
+}.asCoroutineDispatcher()
+
+fun main() = runBlocking {
+    // 父协程
+    val parentJob = launch(fixedDispatcher) {
+
+        // 1，注意这里
+        launch(Job()) { // 子协程1
+            var i = 0
+            while (isActive) {
+                Thread.sleep(500L)
+                i ++
+                println("First i = $i")
+            }
+        }
+
+        launch { // 子协程2
+            var i = 0
+            while (isActive) {
+                Thread.sleep(500L)
+                i ++
+                println("Second i = $i")
+            }
+        }
+    }
+
+    delay(2000L)
+
+    parentJob.cancel()
+    parentJob.join()
+
+    println("End")
+}
+
+/*
+输出结果
+First i = 1
+Second i = 1
+First i = 2
+Second i = 2
+Second i = 3
+First i = 3
+First i = 4
+Second i = 4
+End
+First i = 5
+First i = 6
+// 子协程1永远不会停下来
+*/
+```
+
+##### 未正确处理 CancellationException
+
+delay() 函数可以自动检测当前的协程是否已经被取消，如果已经被取消的话，它会抛出一个 CancellationException，从而终止当前的协程。
+
+```kotlin
+fun main() = runBlocking {
+
+    val parentJob = launch(Dispatchers.Default) {
+        launch {
+            var i = 0
+            while (true) {
+                // 变化在这里
+                delay(500L)
+                i ++
+                println("First i = $i")
+            }
+        }
+
+        launch {
+            var i = 0
+            while (true) {
+                // 变化在这里
+                delay(500L)
+                i ++
+                println("Second i = $i")
+            }
+        }
+    }
+
+    delay(2000L)
+
+    parentJob.cancel()
+    parentJob.join()
+
+    println("End")
+}
+
+/*
+输出结果
+First i = 1
+Second i = 1
+First i = 2
+Second i = 2
+First i = 3
+Second i = 3
+End
+*/
+```
+
+
+
+当我们捕获到 CancellationException 以后，还要把它重新抛出去。而如果我们删去这行代码的话，子协程将同样无法被取消。
+
+```kotlin
+
+// 代码段7
+
+fun main() = runBlocking {
+
+    val parentJob = launch(Dispatchers.Default) {
+        launch {
+            var i = 0
+            while (true) {
+                try {
+                    delay(500L)
+                } catch (e: CancellationException) {
+                    println("Catch CancellationException")
+                    // 1，注意这里
+                    // throw e
+                }
+                i ++
+                println("First i = $i")
+            }
+        }
+
+        launch {
+            var i = 0
+            while (true) {
+                delay(500L)
+                i ++
+                println("Second i = $i")
+            }
+        }
+    }
+
+    delay(2000L)
+
+    parentJob.cancel()
+    parentJob.join()
+
+    println("End")
+}
+
+/*
+输出结果
+输出结果
+First i = 1
+Second i = 1
+First i = 2
+Second i = 2
+First i = 3
+Second i = 3
+Second i = 4
+..
+First i = 342825
+Catch CancellationException
+// 程序将永远无法终止
+*/
+```
+
+
+
+
+
+#### 普通异常
+
+##### 不要用 try-catch 直接包裹 launch、async。
+
+因为，当协程体当中的“1/0”执行的时候，我们的程序已经跳出 try-catch 的作用域了。
+
+```kotlin
+fun main() = runBlocking {
+    try {
+        launch {
+            delay(100L)
+            1 / 0 // 故意制造异常
+        }
+    } catch (e: ArithmeticException) {
+        println("Catch: $e")
+    }
+
+    delay(500L)
+    println("End")
+}
+
+/*
+输出结果：
+崩溃
+Exception in thread "main" ArithmeticException: / by zero
+*/
+```
+
+我们可以把 try-catch 挪到 launch{} 协程体内部。这样一来，它就可以正常捕获到 ArithmeticException 这个异常了。
+
+
+
+##### SupervisorJob
+
+使用 try-catch 包裹“deferred.await()”会造成崩溃，当然await() 如果不调用的话也会发生崩溃
+
+```kotlin
+fun main() = runBlocking {
+    val deferred = async {
+        delay(100L)
+        1 / 0
+    }
+
+    try {
+        deferred.await()
+    } catch (e: ArithmeticException) {
+        println("Catch: $e")
+    }
+
+    delay(500L)
+    println("End")
+}
+
+/*
+输出结果
+Catch: java.lang.ArithmeticException: / by zero
+崩溃：
+Exception in thread "main" ArithmeticException: / by zero
+*/
+```
+
+
+
+如果我们要使用 try-catch 包裹“deferred.await()”的话，还需要配合 SupervisorJob 一起使用。
+
+```kotlin
+fun main() = runBlocking {
+    val scope = CoroutineScope(SupervisorJob())
+    val deferred = scope.async {
+        delay(100L)
+        1 / 0
+    }
+
+    try {
+        deferred.await()
+    } catch (e: ArithmeticException) {
+        println("Catch: $e")
+    }
+
+    delay(500L)
+    println("End")
+}
+
+/*
+输出结果
+Catch: java.lang.ArithmeticException: / by zero
+End
+*/
+```
+
+
+
+SupervisorJob源码
+
+```kotlin
+public fun SupervisorJob(parent: Job? = null) : CompletableJob  = SupervisorJobImpl(parent)
+
+public interface CompletableJob : Job {
+    public fun complete(): Boolean
+
+    public fun completeExceptionally(exception: Throwable): Boolean
+}
+```
+
+SupervisorJob 与 Job 最大的区别就在于，当它的子 Job 发生异常的时候，其他的子 Job 不会受到牵连。
+
+
+
+##### CoroutineExceptionHandler
+
+```kotlin
+fun main() = runBlocking {
+    val myExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        println("Catch exception: $throwable")
+    }
+
+    // 注意这里
+    val scope = CoroutineScope(coroutineContext + Job() + myExceptionHandler)
+
+    scope.launch {
+        async {
+            delay(100L)
+        }
+
+        launch {
+            delay(100L)
+
+            launch {
+                delay(100L)
+                1 / 0 // 故意制造异常
+            }
+        }
+
+        delay(100L)
+    }
+
+    delay(1000L)
+    println("End")
+}
+
+/*
+Catch exception: ArithmeticException: / by zero
+End
+*/
+```
 
 
 
