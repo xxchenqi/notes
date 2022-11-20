@@ -3543,6 +3543,12 @@ SupervisorJob 与 Job 最大的区别就在于，当它的子 Job 发生异常�
 
 ##### CoroutineExceptionHandler
 
+使用 CoroutineExceptionHandler 处理复杂结构的协程异常，它仅在顶层协程中起作用。
+
+
+
+定义了一个 CoroutineExceptionHandler，然后把它传入了 scope 当中，这样一来，我们就可以捕获其中所有的异常了。
+
 ```kotlin
 fun main() = runBlocking {
     val myExceptionHandler = CoroutineExceptionHandler { _, throwable ->
@@ -3579,7 +3585,41 @@ End
 */
 ```
 
+为什么 CoroutineExceptionHandler 不起作用？
 
+```kotlin
+fun main() = runBlocking {
+   val myExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+       println("Catch exception: $throwable")
+   }
+
+   // 不再传入myExceptionHandler
+   val scope = CoroutineScope(coroutineContext)
+   scope.launch {
+       async {
+           delay(100L)
+       }
+       launch {
+           delay(100L)
+           // 变化在这里
+           launch(myExceptionHandler) {
+               delay(100L)
+               1 / 0 
+           }
+       }
+       delay(100L)
+   }
+   delay(1000L)
+   println("End")
+}
+/*
+输出结果
+崩溃：
+Exception in thread "main" ArithmeticException: / by zero
+*/
+```
+
+CoroutineExceptionHandler 只在顶层的协程当中才会起作用。也就是说，当子协程当中出现异常以后，它们都会统一上报给顶层的父协程，然后顶层的父协程才会去调用 CoroutineExceptionHandler，来处理对应的异常。
 
 
 
