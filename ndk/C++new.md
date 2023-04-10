@@ -1,4 +1,6 @@
-### 常量
+# C++学习
+
+## 常量
 
 宏常量
 
@@ -14,7 +16,7 @@ const int month = 7;
 
 
 
-### sizeof
+## sizeof
 
 查看数据类型所占内存大小
 
@@ -29,7 +31,7 @@ sizeof(long long);//8
 
 
 
-### goto
+## goto
 
 语法:goto 标记;
 
@@ -41,7 +43,7 @@ FLAG:
 
 
 
-### 数组
+## 数组
 
 ```c++
 int arr[10] = { 1,2,3,4,5,6,7,8,9,10 };
@@ -55,7 +57,7 @@ cout << "数组首地址:" << &arr[0] << endl;
 
 
 
-### 二维数组
+## 二维数组
 
 ```c++
 int arr[2][3] = 
@@ -78,7 +80,7 @@ cout << "二维数组第一行第一个元素首地址:" << &arr[0][0] << endl;
 
 
 
-### 函数值传递
+## 函数值传递
 
 函数值传递时，函数的形参发生改变，并不会影响实参的值
 
@@ -94,7 +96,7 @@ void swap(int num1,int num2) {
 
 
 
-### 指针
+## 指针
 
 作用：通过指针间接访问内存
 
@@ -113,7 +115,7 @@ cout << "*p:" << *p << endl;
 
 
 
-#### 指针占用内存空间
+### 指针占用内存空间
 
 32位系统占用4字节
 
@@ -125,7 +127,7 @@ sizeof(int *)
 
 
 
-#### 空指针
+### 空指针
 
 指针变量指向内存中编号为0的空间
 
@@ -141,7 +143,7 @@ cout << *p << endl;
 
 
 
-#### 野指针
+### 野指针
 
 指针变量指向非法的内存空间
 
@@ -151,7 +153,7 @@ int * p = (int *)0x1100;
 
 
 
-#### const修饰指针
+### const修饰指针
 
 ```c++
 int a = 10;
@@ -185,7 +187,7 @@ const在 p前，代表 p不能改
 
 
 
-#### 指针访问数组
+### 指针访问数组
 
 ```c++
 int arr[10] = { 1,3,3,4,5,6,7,8,9,10 };
@@ -199,7 +201,7 @@ cout << "指针访问第二个元素:" << *p<< endl;
 
 
 
-#### 地址传递
+### 地址传递
 
 利用指针作函数参数，可以修改实参的值
 
@@ -222,7 +224,7 @@ int main() {
 
 
 
-### 结构体
+## 结构体
 
 ```c++
 struct student {
@@ -241,13 +243,13 @@ stu.score = 100;
 
 
 
-#### 结构体指针
+### 结构体指针
 
 利用->操作符可以通过结构体指针访问结构体属性
 
 
 
-#### 结构体函数参数
+### 结构体函数参数
 
 ```c++
 // 值传递，形参修改后不会影响实参
@@ -273,7 +275,7 @@ int main() {
 
 
 
-### 内存四区
+## 内存四区
 
 - 代码区：存放函数体的二进制代码，由操作系统进行管理
 - 全局区：存放全局变量、静态变量、常量
@@ -288,7 +290,7 @@ int main() {
 
 
 
-#### 代码区：
+### 代码区：
 
 存放CPU执行的机器指令
 
@@ -296,7 +298,7 @@ int main() {
 
 
 
-#### 全局区:
+### 全局区:
 
 全局变量、静态变量、字符串常量、const修饰的全局变量(全局常量)
 
@@ -326,7 +328,7 @@ int main() {
 
 
 
-#### 栈区:
+### 栈区:
 
 由编译器自动分配释放，存放函数的参数值，局部变量等
 
@@ -348,7 +350,7 @@ int main() {
 
 
 
-#### 堆区:
+### 堆区:
 
 由程序员分配和释放，若程序员不释放，程序结束时由操作系统回收
 
@@ -370,7 +372,7 @@ int main() {
 
 
 
-### new/delete
+## new/delete
 
 new 返回的是该数据类型的指针
 
@@ -383,7 +385,7 @@ delete[] arr;
 
 
 
-### 引用
+## 引用
 
 作用：给变量取别名
 
@@ -397,7 +399,7 @@ cout << a << endl; // 打印a也是= 100
 
 
 
-#### 注意事项:
+### 注意事项:
 
 引用必须初始化
 
@@ -414,7 +416,7 @@ b = c; // 赋值操作,而不是更改引用
 
 
 
-#### 引用函数参数
+### 引用函数参数
 
 作用：函数传参时，可以利用引用的技术让形参修饰实参
 
@@ -437,7 +439,7 @@ int main() {
 
 
 
-#### 引用做函数返回值
+### 引用做函数返回值
 
 注意：不要返回局部变量引用
 
@@ -469,7 +471,7 @@ int main() {
 
 
 
-#### 引用的本质
+### 引用的本质
 
 引用的本质在c++内部实现是一个指针常量
 
@@ -492,7 +494,7 @@ int main() {
 
 
 
-#### 常量引用
+### 常量引用
 
 ```c++
 // 利用常量引用防止误操作修改实参
@@ -508,9 +510,9 @@ const int &ref = 10;
 
 
 
-### 类和对象
+## 类和对象
 
-#### class和struct区别
+### class和struct区别
 
 默认的访问权限不同
 
@@ -520,7 +522,7 @@ class：默认权限为私有
 
 
 
-#### 构造、析构和拷贝分类及调用 
+### 构造、析构和拷贝分类及调用 
 
 注意事项1：调用默认构造函数时，不要加()
 
@@ -582,7 +584,7 @@ void test() {
 
 
 
-####  拷贝构造函数调用时机
+###  拷贝构造函数调用时机
 
 1.使用已经创建完毕的对象初始化一个新对象
 
@@ -616,7 +618,7 @@ Person p = test(); // 调用拷贝构造
 
 
 
-#### 构造函数调用规则
+### 构造函数调用规则
 
 默认情况下，c++编译器至少给一个类添加3个函数
 
@@ -633,7 +635,7 @@ Person p = test(); // 调用拷贝构造
 
 
 
-#### 深拷贝与浅拷贝
+### 深拷贝与浅拷贝
 
 浅拷贝：简单的赋值拷贝操作
 
@@ -660,9 +662,588 @@ Person(const Person &p) {
 
 
 
-总结：如果属性又在堆区开辟的，一定要自己提供拷贝构造函数，防止浅拷贝带来的问题
+总结：如果属性在堆区开辟的，一定要自己提供拷贝构造函数，防止浅拷贝带来的问题
+
+
+
+### 初始化列表
+
+```c++
+Person(int a, int b, int c) :m_A(a), m_B(b), m_C(c) {   
+}
+```
+
+
+
+### 类对象作为类成员
+
+构造顺序：先调用对象成员的构造，在调用本类的构造
+
+析构顺序：与构造顺序相反
+
+
+
+### 静态成员
+
+- 静态成员变量
+  - 所有对象共享同一份数据
+  - 在编译阶段分配内存
+  - 类内声明、类外初始化
+
+- 静态成员函数
+  - 所有对象共享同一个函数
+  - 静态成员函数只能访问静态成员变量
+
+```c++
+class Person {
+public:
+	static int m_A;  
+};
+// 必须类外初始化
+int Person::m_A = 100;
+
+
+void test() {
+    // 两种访问方式
+    // 1.通过对象进行访问
+    Person p;
+    cout << p.m_A << endl;
+    
+    // 2.通过类名访问
+    cout << Person::m_A << endl;
+}
+```
+
+
+
+为什么静态成员函数不能访问非静态成员变量？
+
+因为这个数据属于特定的对象上，静态函数体中无法区分到底是哪个对象上的。
+
+
+
+### 成员变量和成员函数分开存储
+
+```c++
+class Person {
+};
+
+class Person2 {
+    int m_A; // 非静态成员变量,属于类对象上
+    static int m_B; // 静态成员变量，不属于类的对象上
+    void func() {} // 非静态成员函数,不属于类的对象上
+    static void func2() {} // 静态成员函数,不属于类的对象上
+};
+
+Person2::m_B = 10;
+
+void test() {
+    Person p;
+    // 空对象占用内存空间为：1
+    // C++编译器会给每个空对象也分配一个字节控件，是为了区分空对象占内存的位置
+    // 每个空对象也应该有一个独一无二的内存地址
+    cout << sizeof(p) << endl;
+}
+
+void test2() {
+    Person2 p;
+    // 4字节
+    cout << sizeof(p) << endl;
+}
+```
+
+
+
+### this指针
+
+this指针指向被调用的成员函数所属的对象
+
+this指向对象的指针，而*this指向的就是对象本体
+
+**this指针本质是指针常量，指针的指向是不能修改的**
+
+```c++
+class Person {
+public:
+    int age;
+    Person(int age) {
+        this.age = age;
+    }
+    Person& addPersonAge(Person &p) {
+        this->age += p.age;
+        return *this;
+    }
+};
+
+void test() {
+    Person p1(10);
+    Person p2(20);
+    // 链式调用
+    p1.addPersonAge(p2).addPersonAge(p2);
+}
+```
+
+
+
+### 空指针访问成员函数
+
+空指针也是可以调用成员函数，但是要注意有没有用到this指针。
+
+如果用到this指针，需要加以判断保证代码健壮性。
+
+
+
+### const修饰成员函数
+
+常函数
+
+```C++
+class Person {
+public:
+    int m_A;
+    mutable int m_B; // 加上关键字mutable,特殊变量,即使在常函数中也可以修改
+    
+    // this指针本质是指针常量，指针的指向是不能修改的
+
+    // 不加const == Person * const this 
+    // 加const == const Person * const this
+    
+    // 在成员函数后面加const，修饰的是this指向，让指针指向的值也不可以修改
+    void showPerson() const {
+        m_B = 10;
+    }
+}
+```
+
+
+
+常对象
+
+```c++
+void test() {
+    // 常对象只能调用常函数
+    const Person p;
+    p.m_B = 20; // 可以修改
+}
+```
+
+
+
+### 友元
+
+#### 全局函数友元
+
+```c++
+class Building {
+    // 全局函数友元
+    friend void goodGay(Building *building);
+private:
+    string mBedroom;
+};
+
+void goodGay(Building *building) {
+    // 可访问 building的mBedroom私有属性
+} 
+```
+
+
+
+#### 友元类
+
+```c++
+class Building {
+    // 友元类，在goodGay中可以访问到Building的私有属性
+    friend class goodGay;
+};
+```
+
+
+
+#### 成员函数做友元
+
+```c++
+class Building {
+    // 成员函数做友元,可以访问Building中的私有属性
+    friend void GoodGay::visit();
+private:
+    string mBedroom;
+};
+
+class GoodGay {
+	void visit();  
+};
+```
+
+
+
+### 运算符重载
+
+#### 加号重载
+
+```c++
+class Person {
+public:
+    // 成员函数重载+
+    Person operator+(Person &p) {
+        Person temp;
+        temp.a = this->a + p->a;
+        return temp;
+    }
+    int a;
+}
+
+// 全局函数重载
+Person operator+(Person &p1, Person &p2) {
+    Person temp;
+    temp.a = p1.a + p2.a;
+    return temp;
+}
+
+// int运算符重载
+Person operator+(Person &p1, int num) {
+    Person temp;
+    temp.a = p1.a + num;
+    return temp;
+}
+
+
+void test() {
+    Person p1;
+    Person p2;
+    Person p3 = p1 + p2;
+    // 成员函数重载本质调用
+    Person p4 = p1.operator+(p2);
+	// 全局函数重载本质调用    
+    Person p5 = operator+(p1, p2);
+	// int运算符重载
+    Person p6 = p1 + 10;
+}
+```
+
+
+
+#### 左移运算符重载
+
+```c++
+class Person {
+public:
+	// 利用成员函数重载左移，无法实现cout在左侧
+    // p.operator(cout) 简化版 p << cout
+    // void operator<<(cout)
+    
+    int a;
+}
+
+// 只能利用全局函数重载左移运算符
+ostream& operator<<(ostream &cout, Person &p) { // 本质 operator<<(cout, p) 简化 cout << p
+    cout << p.a;
+    return cout;
+}
+```
+
+
+
+#### 递增运算符
+
+```c++
+class MyInteger {
+public:
+    int num;
+    // 重载前置++运算符
+    // 注意，此处如果将返回值MyInteger& 改成 MyInteger，会导致 ++(++myInteger) 只有1次成功，因为做了一次递增后返回的是新的对象。
+    MyInteger& operator++() {
+    	num++;
+        return *this;
+    }
+
+    // 重载后置++运算符
+    // int 代表占位符,用来区分前置和后置递增
+    // 注意，此处此处如果将返回值MyInteger 改成 MyInteger&，会导致非法操作,因为temp局部变量被释放了
+    MyInteger operator++(int) {
+        // 先记录当时结果
+        MyInteger temp = *this; // 此处相当于拷贝
+        // 后递增
+		num++;
+        // 最后将记录结果返回
+        return temp;
+    }
+};
+```
+
+
+
+#### 赋值运算符重载
+
+```c++
+class Person {
+public:
+    int* age;
+    
+    ~Person() {
+        if (age != NULL) {
+            delete age;
+            age = NULL;
+        }
+    }
+    
+    Person& operator=(Person &p) {
+        // 编译器默认提供是浅拷贝
+        // age = p.age;
+        
+        // 先判断是否有属性在堆区,如果有先释放干净，然后再深拷贝
+        if (age != NULL) {
+            delete age;
+            age = NULL;
+        }
+        age = new int(*p.age);
+        return *this;
+    }
+    
+}
+```
+
+
+
+#### 函数调用运算符重载(仿函数)
+
+```c++
+class MyPrinter {
+public:
+    void operator()(string test) {
+    }
+}
+
+void test() {
+    MyPrinter p;
+    p("ttt");
+}
+```
+
+
+
+### 继承
+
+#### 继承方式
+
+![](./res/extend.png)
+
+
+
+#### 继承中的对象模型
+
+```c++
+class Base {
+public:
+    int a;
+protected:
+    int b;
+private:
+    int c;
+};
+
+class Son :public Base {
+public:
+    int d;
+};
+
+void test() {
+    // 16
+    // 父类中所有非静态成员属性都会被子类继承下去
+    cout << sizeof(Son) << endl;
+}
+```
+
+使用vs自带工具验证(开发人员命令工具)
+
+```
+cl /d1 reportSingleClassLayout<类名> <文件名>
+```
+
+
+
+#### 继承中的构造和析构顺序
+
+先构造父类，再构造子类，析构顺序和构造顺序相反
+
+
+
+#### 继承中同名成员处理
+
+1.子类对象可以直接访问到子类中的同名成员
+
+2.子类对象加作用域可以访问到父类同名成员
+
+3.当子类与父类拥有同名成员函数，子类会隐藏父类中同名成员函数，加作用域可以访问到父类中同名函数
+
+```c++
+class Base {
+public:
+    Base() {
+        a = 10;
+    }
+    void func() {
+        cout << "BASE" << endl;
+    }
+
+    void func(int a) {
+        cout << "BASE int" << endl;
+    }
+    int a;
+};
+
+class Son :public Base {
+public:
+    Son() {
+        a = 20;
+    }
+    void func() {
+        cout << "SON" << endl;
+    }
+    int a;
+};
+
+void test() {
+    Son s;
+    cout << s.a << endl;
+    // 通过子类对象访问到父类同名成员,需要加作用域
+    cout << s.Base::a << endl;
+
+    s.func();
+    s.Base::func(); 
+
+    // 如果子类中出现和父类同名的成员函数，子类的同名成员会隐藏掉父类所有的同名成员函数
+    // 如果想访问到父类中被隐藏的同名成员函数，需要加作用域
+    //s.func(100);
+    s.Base::func(100);
+}
+```
+
+
+
+#### 同名静态成员处理方式
+
+```c++
+class Base {
+public:
+    static int a;
+};
+
+int Base::a = 20;
+
+class Son :public Base {
+public:
+    static int a;
+};
+
+int Son::a = 10;
+
+
+void test() {
+    Son s;
+    // 通过对象访问
+    cout << s.a << endl;
+    cout << s.Base::a << endl;
+    // 通过类名访问
+    cout << Son::a << endl;
+    // 第一个::代表通过类名方式访问,第二个::代表访问父类作用域下
+    cout << Son::Base::a << endl;
+}
+```
+
+
+
+#### 多继承
+
+不建议用
+
+多继承可能会引发父类中有同名出现，需要加作用域区分
+
+```c++
+class Base1 {
+public:
+    int a;
+    Base1() {
+        a = 10;
+    }
+};
+
+class Base2 {
+public:
+    int a;
+    Base2() {
+        a = 20;
+    }
+};
+
+class Son : public Base1, public Base2 {
+
+};
+
+void test() {
+    Son s;
+    cout << s.Base1::a << endl;
+    cout << s.Base2::a << endl;
+}
+```
+
+
+
+#### 菱形继承
+
+概念：
+
+两个派生类继承同一个基类
+
+又有某个类同时继承两个派生类
+
+
+
+菱形继承问题：
+
+1.二义性问题，通过作用域解决
+
+当菱形继承两个父类拥有相同数据，需要加作用域区分
+
+2.多份数据问题，通过虚继承解决
+
+这份数据只需要一份就可以，菱形继承导致数据有多份，资源浪费
+
+```c++
+class Base {
+public:
+    int age;
+};
+
+class Base1 : virtual public Base{};
+
+class Base2 : virtual public Base {};
+
+class Son : public Base1, public Base2 {
+
+};
+
+void test() {
+    Son s;
+    cout << s.Base1::age << endl;
+    cout << s.Base2::age << endl;
+    cout << s.age << endl;
+}
+```
+
+
+
+原理：
+
+使用vs自带工具验证(开发人员命令工具)
+
+```
+cl /d1 reportSingleClassLayout<类名> <文件名>
+```
+
+通过虚继承，实际上继承的是指针vbptr(虚基类指针)，vbptr指向的是vbtable(虚基类表)，表中会记录偏移量，通过起始地址+偏移量能找到唯一的数据，只有一份，不会存在多份数据情况。
 
 
 
 
 
+### 多态
