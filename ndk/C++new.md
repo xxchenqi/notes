@@ -55,6 +55,26 @@ cout << "数组首地址:" << arr << endl;
 cout << "数组首地址:" << &arr[0] << endl;
 ```
 
+定义方式
+
+```c++
+// 1
+int arr[5];
+arr[0] = 1;
+
+// 2 
+// 如果在初始化时，未全部填完，会用0来填补剩余数据
+int arr2[5] = {1};
+
+// 3
+// 必须初始化长度
+int arr3[] = {1,...};
+```
+
+
+
+
+
 
 
 ## 二维数组
@@ -1247,3 +1267,493 @@ cl /d1 reportSingleClassLayout<类名> <文件名>
 
 
 ### 多态
+
+#### 基础
+
+静态多态：地址早绑定，编译阶段确定函数地址
+
+动态多态：地址晚绑定，运行阶段确定函数地址
+
+
+
+```c++
+class Animal {
+public:
+    // 如果不加virtual，表示地址早绑定，在编译阶段确定函数地址，调用test函数只会执行父类的speak，不会去执行子类的speak
+    // 加了virtual，表示地址晚绑定，在运行阶段确定函数地址，在调用test函数时，传进去谁，就调用谁的speak
+    virtual void speak() {
+        cout << "animal speak" << endl;
+    }
+};
+
+class Dog : public Animal {
+public:
+    // 此处virtual可写可不写
+    void speak() {
+        cout << "dog speak" << endl;
+    }
+};
+
+// 动态多态满足条件
+// 1.有继承关系
+// 2.子类重写父类的虚函数
+void test(Animal & animal) {
+    // 此函数无法提前确定，运行时才能确定，所以需要加virtual，来实现地址晚绑定
+    animal.speak();
+}
+
+int main() {
+    Dog dog;
+    test(dog);
+	return 0;
+}
+```
+
+
+
+#### 原理
+
+```c++
+class Animal {
+public:
+    virtual void speak() {
+        cout << "animal speak" << endl;
+    }
+};
+
+
+class Dog : public Animal {
+	// 当子类重写了父类的虚函数，子类的虚函数表的内部记录虚函数地址变更为(&Dog::speak)，此时父类是不变的，只是变更的子类
+    virtual void speak() {
+        cout << "dog speak" << endl;
+    }
+};
+
+int main() {
+    // 8字节(指针大小)
+    // Animal内部存在vfptr虚函数指针指向vbtable虚函数表(在菱形继承这节中有提到过)
+    // 表的内部记录虚函数地址(&Animal::speak)
+    cout << sizeof(Animal) << endl;
+    
+    // 当父类的指针或引用指向子类对象时，发生多态，调用的是子类对象的函数地址
+    // Animal &animal = cat;
+    
+	return 0;
+}
+```
+
+
+
+#### 纯虚函数和抽象类
+
+纯虚函数语法：
+
+```c++
+virtual void test() = 0;
+```
+
+当类中有了纯虚函数，这个类也称为抽象类
+
+
+
+抽象类特点：
+
+无法实例化
+
+子类必须重写父类的纯虚函数，否则也属于抽象类。
+
+
+
+#### 虚析构和纯虚析构
+
+虚析构和纯虚析构主要解决子类析构代码调用不到的问题
+
+如果是纯虚析构，这个类也属于抽象类，无法实例化对象
+
+```c++
+class Animal {
+public:
+	// 纯虚析构需要声明也需要实现
+	// 有了纯虚析构，这个类也属于抽象类，无法实例化对象
+	// virtual ~Animal() = 0;
+
+	virtual ~Animal() {
+		cout << "~Animal" << endl;
+	}
+};
+
+// 纯虚函数声明
+// Animal::~Animal() {}
+
+class Dog : public Animal {
+public:
+	~Dog() {
+		cout << "~Dog" << endl;
+	}
+};
+
+int main() {
+	Animal *animal = new Dog();
+	// 如果父类未使用虚析构，不会调用子类的析构函数
+	delete animal;
+	return 0;
+}
+```
+
+
+
+### IO
+
+文件打开方式
+
+| 打开方式    | 解释                       |
+| ----------- | -------------------------- |
+| ios::in     | 读文件                     |
+| ios::out    | 写文件                     |
+| ios::ate    | 初始位置：文件尾           |
+| ios::app    | 追加方式写文件             |
+| ios::trunc  | 如果文件存在先删除，再创建 |
+| ios::binary | 二进制方式                 |
+
+
+
+#### 写文件
+
+```c++
+#include <fstream>
+int main() {
+	ofstream ofs;
+	ofs.open("test.txt", ios::out);
+	ofs << "姓名: 张三" << endl;
+	ofs.close();
+	return 0;
+}
+```
+
+
+
+#### 读文件
+
+```c++
+int main() {
+	ifstream ifs;
+	ifs.open("test.txt", ios::in);
+	if (!ifs.is_open()) {
+		cout << "打开失败" << endl;
+		return 0;
+	}
+
+	// 第一种读数据
+	//char buf[1024] = { 0 };
+	//while ( ifs >> buf ) {
+	//	cout << buf << endl;
+	//}
+
+	// 第二种读数据
+	//char buf[1024] = { 0 };
+	//while ( ifs.getline(buf, sizeof(buf))) {
+	//	cout << buf << endl;
+	//}
+
+	// 第三种读数据
+	//string buf;
+	//while (getline(ifs, buf)) {
+	//	cout << buf << endl;
+	//}
+
+	//第四种读数据(不推荐)
+	char c;
+	while ((c = ifs.get()) != EOF) { // EOF = END OF FILE
+		cout << c;
+	}
+
+	ifs.close();
+
+	return 0;
+}
+```
+
+
+
+#### 二进制写文件
+
+```c++
+class Person {
+public:
+	char name[64];
+	int age;
+};
+
+int main() {
+	ofstream ofs("person.txt", ios::out | ios::binary);
+	// ofs.open("person.txt", ios::out | ios::binary);
+	Person p = { "张三", 18 };
+	ofs.write((const char*)&p, sizeof(Person));
+	ofs.close();
+	return 0;
+}
+
+```
+
+
+
+#### 二进制读文件
+
+```c++
+int main() {
+	ifstream ifs;
+	ifs.open("person.txt", ios::in | ios::binary);
+	if (!ifs.is_open()) {
+		cout << "文件打开失败" << endl;
+		return 0;
+	}
+	Person p;
+	ifs.read((char*)&p, sizeof(Person));
+	cout << p.name << endl;
+	cout << p.age << endl;
+	ifs.close();
+	return 0;
+}
+```
+
+
+
+### 模板
+
+#### 函数模板
+
+```c++
+template<typename T>
+```
+
+template 模板声明
+
+typename 标识后面的符号是一种类型，可以用class代替
+
+T 通用数据类型
+
+
+
+```c++
+template<typename T>
+void swapT(T &t1, T &t2) {
+	T temp = t1;
+	t1 = t2;
+	t2 = temp;
+}
+
+int main() {
+	int a = 1;
+	int b = 2;
+	// 自动推导
+	// swapT(a, b);
+	// 显示指定类型
+	swapT<int>(a, b);
+	cout << a << endl;
+	cout << b << endl;
+	return 0;
+}
+```
+
+
+
+##### 普通函数和函数模板区别
+
+1.普通函数调用时可以发生自动类型转换 (隐式类型转换)
+
+2.函数模板调用时，如果利用自动类型推导，不会发生隐式类型转换
+
+3.如果利用显示指定类型的方式，可以发生隐式类型转换
+
+
+
+##### 普通函数和函数模板调用规则
+
+1.如果函数模板和普通函数都可以实现，优先调用普通函数T
+
+2.可以通过空模板参数列表<>来强制调用函数模板
+
+3.函数模板也可以发生重载
+
+4.如果函数模板可以产生更好的匹配,优先调用函数模板
+
+
+
+##### 模板局限性(具体化)
+
+利用具体化模板解决自定义类型的通用问题
+
+```c++
+template<class T>
+bool myCompare(T &a, T &b) {    
+}
+
+template<> bool myCompare(Person &p1, Person &p2) {
+}
+```
+
+
+
+#### 类模板
+
+```c++
+template<typename T>
+类
+```
+
+
+
+##### 类模板与函数模板区别
+
+1.类模板没有自动类型推导
+
+```c++
+// Person p("张三", 18);  错误
+Person<string, int> p("张三", 18); // 正确
+```
+
+2.类模板可以有默认参数
+
+```c++
+template<class NameType, class AgeType = int>
+class Person {
+};
+```
+
+
+
+##### 类模板中成员函数创建时机
+
+类模板中的成员函数并不是一开始就创建，在调用时才去创建
+
+
+
+##### 类模板对象做函数参数
+
+```c++
+template<class T1,class T2>
+class Person {
+	T1 name;
+	T2 age;
+};
+
+// 1.指定传入类型 (常用)
+void test1(Person<string, int> &p) {
+}
+
+// 2.参数模板化
+template<class T1,class T2>
+void test2(Person<T1, T2> &p) {
+	// 查看模板类型
+	cout << typeid(T1).name << endl;
+}
+
+// 3.整个类模板化
+template<class T>
+void test3(T &p) {
+}
+```
+
+
+
+##### 查看模板类型
+
+```c++
+cout << typeid(T1).name << endl;
+```
+
+
+
+##### 类模板与继承
+
+```c++
+template<class T>
+class Base {
+public:
+    T t;
+};
+
+//class child :public Base 错误
+class child :public Base<int>
+{  
+};
+```
+
+
+
+##### 类模板成员函数类外实现
+
+```c++
+template<class T1, class T2>
+class Person {
+public:
+    Person(T1 name, T2 age);
+    void showPerson();
+public:
+    T1 name;
+    T2 age;
+};
+
+template<class T1, class T2>
+Person<T1, T2>::Person(T1 name, T2 age) {    
+}
+
+template<class T1, class T2>
+void Person<T1, T2>::showPerson() {    
+}
+```
+
+
+
+##### 类模板分文件编写
+
+问题：
+
+类模板中成员函数创建时机是在调用阶段，导致分文件编写时链接不到
+
+解决：
+
+1.直接包含.cpp源文件
+
+2.将声明和实现写到同一文件中，并更改后缀名为.hpp，hpp是约定的名称，并不是强制
+
+
+
+##### 类模板与友元
+
+```c++
+template<class T1, class T2>
+class Person;
+
+template<class T1, class T2>
+void showPerson2(Person<T1, T2>& p) {
+	cout << p.name << ":" << p.age << endl;
+}
+
+template<class T1, class T2>
+class Person {
+	// 全局函数 类内实现
+	friend void showPerson(Person<T1, T2>& p) {
+		cout << p.name << ":" << p.age << endl;
+	}
+
+	// 全局函数 类外实现
+	friend void showPerson2<>(Person<T1, T2>& p);
+public:
+	Person(T1 name, T2 age) {
+		this->name = name;
+		this->age = age;
+	}
+
+private:
+	T1 name;
+	T2 age;
+};
+```
+
+
+
+
+
+
+
