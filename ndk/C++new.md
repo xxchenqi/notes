@@ -1402,7 +1402,7 @@ int main() {
 
 
 
-### IO
+## IO
 
 文件打开方式
 
@@ -1417,7 +1417,7 @@ int main() {
 
 
 
-#### 写文件
+### 写文件
 
 ```c++
 #include <fstream>
@@ -1432,7 +1432,7 @@ int main() {
 
 
 
-#### 读文件
+### 读文件
 
 ```c++
 int main() {
@@ -1475,7 +1475,7 @@ int main() {
 
 
 
-#### 二进制写文件
+### 二进制写文件
 
 ```c++
 class Person {
@@ -1497,7 +1497,7 @@ int main() {
 
 
 
-#### 二进制读文件
+### 二进制读文件
 
 ```c++
 int main() {
@@ -1518,9 +1518,9 @@ int main() {
 
 
 
-### 模板
+## 模板
 
-#### 函数模板
+### 函数模板
 
 ```c++
 template<typename T>
@@ -1557,7 +1557,7 @@ int main() {
 
 
 
-##### 普通函数和函数模板区别
+#### 普通函数和函数模板区别
 
 1.普通函数调用时可以发生自动类型转换 (隐式类型转换)
 
@@ -1567,7 +1567,7 @@ int main() {
 
 
 
-##### 普通函数和函数模板调用规则
+#### 普通函数和函数模板调用规则
 
 1.如果函数模板和普通函数都可以实现，优先调用普通函数T
 
@@ -1579,7 +1579,7 @@ int main() {
 
 
 
-##### 模板局限性(具体化)
+#### 模板局限性(具体化)
 
 利用具体化模板解决自定义类型的通用问题
 
@@ -1594,7 +1594,7 @@ template<> bool myCompare(Person &p1, Person &p2) {
 
 
 
-#### 类模板
+### 类模板
 
 ```c++
 template<typename T>
@@ -1603,7 +1603,7 @@ template<typename T>
 
 
 
-##### 类模板与函数模板区别
+#### 类模板与函数模板区别
 
 1.类模板没有自动类型推导
 
@@ -1622,13 +1622,13 @@ class Person {
 
 
 
-##### 类模板中成员函数创建时机
+#### 类模板中成员函数创建时机
 
 类模板中的成员函数并不是一开始就创建，在调用时才去创建
 
 
 
-##### 类模板对象做函数参数
+#### 类模板对象做函数参数
 
 ```c++
 template<class T1,class T2>
@@ -1656,7 +1656,7 @@ void test3(T &p) {
 
 
 
-##### 查看模板类型
+#### 查看模板类型
 
 ```c++
 cout << typeid(T1).name << endl;
@@ -1664,7 +1664,7 @@ cout << typeid(T1).name << endl;
 
 
 
-##### 类模板与继承
+#### 类模板与继承
 
 ```c++
 template<class T>
@@ -1681,7 +1681,7 @@ class child :public Base<int>
 
 
 
-##### 类模板成员函数类外实现
+#### 类模板成员函数类外实现
 
 ```c++
 template<class T1, class T2>
@@ -1705,7 +1705,7 @@ void Person<T1, T2>::showPerson() {
 
 
 
-##### 类模板分文件编写
+#### 类模板分文件编写
 
 问题：
 
@@ -1719,7 +1719,7 @@ void Person<T1, T2>::showPerson() {
 
 
 
-##### 类模板与友元
+#### 类模板与友元
 
 ```c++
 template<class T1, class T2>
@@ -1753,7 +1753,111 @@ private:
 
 
 
+## 容器
+
+### string
+
+### vector
+
+### deque
+
+### stack
+
+### queue
+
+### list
+
+### set
+
+### pari
+
+### map
 
 
 
+## 函数对象
+
+概念:
+
+重载函数调用操作符的类称为函数对象，也叫仿函数
+
+函数对象(仿函数)是一个类，不是函数
+
+
+
+特点:
+
+- 函数对象在使用时，和普通函数一样，有参数和返回值
+- 函数对象可以有自己的状态
+- 函数对象可以作为参数传递
+
+
+
+### 一元谓词和二元谓词
+
+返回bool类型的仿函数称为谓词
+
+operator接收一个参数，叫做一元谓词
+
+operator接收二个参数，叫做二元谓词
+
+
+
+### 内建函数对象
+
+```
+#include<functional>
+```
+
+算数仿函数
+
+关系仿函数
+
+逻辑仿函数
+
+
+
+## 算法
+
+for_each
+
+transform
+
+find
+
+find_if
+
+adjacent_find
+
+binary_search
+
+count
+
+count_if
+
+sort
+
+random_shuffle
+
+merge
+
+reverse
+
+copy
+
+replace
+
+replace_if
+
+swap
+
+accumulate
+
+fill
+
+set_intersection
+
+set_union
+
+set_difference
 
