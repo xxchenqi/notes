@@ -104,6 +104,8 @@ private static class AppHandler extends Handler {
 
 **RecyclerView Adapter的 ViewHolder为什么不会泄露，因为生命周期一致**
 
+ViewHolder 不会导致内存泄漏的主要原因是它们的生命周期受到 `RecyclerView` 的控制。当 Item View 不再可见或被回收时，`RecyclerView` 会自动回收对应的 ViewHolder 对象。这意味着 ViewHolder 不会持有对外部对象的引用，也不会导致外部对象无法被垃圾回收。
+
 
 
 ### 4.为何主线程可以new Handler？如果想要在子线程中new Handler 要做些什么准备？

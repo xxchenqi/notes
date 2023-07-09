@@ -1115,49 +1115,6 @@ AES：高级数据加密标准，能够有效抵御已知的针对DES算法的�
 
 
 
-### 快速排序
-
-```java
- /**
-  * 快速排序
-  *
-  * @param array 目标数组
-  * @param left  数组最左下标值
-  * @param right 数组最右下标值
-  */
- public static void quickSort(int[] array, int left, int right) {
-     //防止数组越界(这一步最后再回来理解)
-     if (left >= right) return;
-     int base = array[left];//基准数
-     int i = left, j = right;//左探子i，右探子j
-     int temp;//用于交换的临时变量
-     while (i != j) {//两个探子相遇前
-         //找出小于 基准数 的下标，当大于等于 基准数 的时候，探子j 向左移动即可（j--）
-         while (array[j] >= base && i < j) {
-             j--;
-         }
-         //找出大于 基准数 的下标，当小于等于 基准数 的时候，探子i 向右移动即可（i++）
-         while (array[i] <= base && i < j) {
-             i++;
-         }
-         //经过上面两个循环之后，探子j，探子i 都会停在符合条件的值的下标上面，然后就可以进行交换值啦
-         if (i < j) {
-             temp = array[i];
-             array[i] = array[j];
-             array[j] = temp;
-         }
-     }
-     //经过上面的循环之后会触发 i=j 的条件（即两个探子相遇），此时将基准值的数与i或者j（随便哪个都一样）下标的值交换，完成一次交换探测
-     array[left] = array[i];//基准值的位置
-     array[i] = base;//基准值
-     //完成交换之后再对左右两边的子数组进行递归调用走上面的方法，完成整个数组的排序
-     quickSort(array, left, i - 1);//左边
-     quickSort(array, i + 1, right); //右边
- }
-```
-
-
-
 ### 二分查找
 
 ```java
@@ -1413,12 +1370,30 @@ http2功能:
 二进制分帧层 
 以二进制传输代替原本的明文传输，原本的报文消息被划分为更小的数据帧.
 多路复用
-在一个 TCP 连接上，我们可以向对方不断发送帧，每帧的 stream identifier 的标明这一帧属于哪个流，然后在对方接收时，根据 stream identifier 拼接每个流的所有帧组成一整块数据。把 HTTP/1.1 每个请求都当作一个流，那么多个请求变成多个流，请求响应数据分成多个帧，不同流中的帧交错地发送给对方，这就是 HTTP/2 中的多路复用。流的概念实现了单连接上多请求 - 响应并行，解决了线头阻塞的问题，减少了 TCP 连接数量和 TCP 连接慢启动造成的问题.http2 对于同一域名只需要创建一个连接，而不是像 http/1.1 那样创建 6~8 个连接。
+允许在单个 TCP 连接上同时发送多个请求和响应。这消除了旧版本中的串行请求和响应的限制，提高了并发性能。
 服务端推送
 浏览器发送一个请求，服务器主动向浏览器推送与这个请求相关的资源，这样浏览器就不用发起后续请求。
 Header 压缩
 使用 HPACK 算法来压缩首部内容
 ```
+
+
+
+```
+HTTP/1.1是目前广泛使用的HTTP协议版本。它使用基于文本的格式进行通信，每个请求和响应都是独立的，需要建立多个TCP连接来处理并行请求。HTTP/1.1的主要特点包括：
+
+持久连接：HTTP/1.1引入了持久连接，允许在单个TCP连接上发送多个请求和响应，减少了连接建立和关闭的开销。
+
+请求管道化：HTTP/1.1支持请求管道化，允许在一个连接上同时发送多个请求，提高了并行处理的效率。
+
+压缩：HTTP/1.1支持使用压缩算法对请求和响应的数据进行压缩，减少数据传输的大小。
+
+分块传输编码：HTTP/1.1支持分块传输编码，可以将响应分成多个块进行传输，提高了大文件传输的效率。
+```
+
+
+
+
 
 ### tcp方面拥塞控制？
 
@@ -2020,6 +1995,39 @@ https://juejin.cn/post/6844903880824881160#heading-1
 
 
 
+### TheadLocal
+
+
+
+### CAS
+
+```
+CAS的基本思路就是，如果这个地址上的值和期望的值相等，则给其赋予新值，否则不做任何事儿，但是要返回原值是多少。循环CAS就是在一个循环里不断的做cas操作，直到成功为止。
+
+ABA问题。
+循环时间长开销大
+只能保证一个共享变量的原子操作。
+```
+
+
+
+### AbstractQueuedSynchronizer 
+
+```
+AQS是用来构建锁或者其他同步组件的基础框架，它使用了一个int成员变量表示同步状态，通过内置的FIFO队列来完成资源获取线程的排队工作。
+```
+
+### CLH队列锁
+
+```
+CLH队列锁也是一种基于链表的可扩展、高性能、公平的自旋锁，申请线程仅仅在本地变量上自旋，它不断轮询前驱的状态，假设发现前驱释放了锁就结束自旋。
+Java中的AQS是CLH队列锁的一种变体实现。
+```
+
+
+
+
+
 ## Java基础
 
 ### java的hashcode和equals的区别
@@ -2162,7 +2170,40 @@ OOP与AOP的区别：
 
 防止反射的办法是在构造方法加个开关，如果已经初始化了就抛异常
 
+使用安全检查：在需要保护的类或方法中添加安全检查，通过检查调用方的身份或权限来确定是否允许进行反射操作。例如，可以在类的构造函数中添加逻辑，检查调用方的调用栈，确保只有特定的合法调用方可以进行反射。
 ```
+
+```
+public class MyClass {
+    private static final String ALLOWED_CALLER = "com.example.MyAllowedCaller";
+
+    public MyClass() {
+        checkCaller();
+    }
+
+    private void checkCaller() {
+        String caller = getCallerClassName();
+        if (!ALLOWED_CALLER.equals(caller)) {
+            throw new SecurityException("Unauthorized access");
+        }
+    }
+
+    private String getCallerClassName() {
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+        if (stackTrace.length >= 4) {
+            return stackTrace[3].getClassName();
+        }
+        return null;
+    }
+}
+在上述示例中，MyClass 类的构造函数中添加了一个安全检查 checkCaller()，它会获取调用方的类名，并与预设的合法调用方类名进行比较。如果调用方不是指定的合法调用方，则会抛出 SecurityException 异常。
+
+需要注意的是，这种简单的安全检查方式并不能完全防止反射攻击，因为反射可以绕过访问修饰符和调用栈的限制。更强大的安全机制需要结合其他的安全框架和技术来实现。
+
+此外，还可以考虑使用第三方的安全库或框架，如 Spring Security、Apache Shiro 等，它们提供了更全面的安全功能和配置选项，可以更灵活地进行安全检查和控制。具体的实现方式和代码会因使用的安全库而有所不同，您可以参考相应的文档和示例代码进行使用。
+```
+
+
 
 ### String的hashCode
 
@@ -2201,26 +2242,53 @@ public int hashCode() {
 ### Activity 和 Fragment 生命周期有哪些?
 
 ```
-onCreate
-onStart
-onResume
-onRestart
-onPause
-onStop
-onDestroy
+常见的 Activity 生命周期方法：
+
+onCreate()：在 Activity 第一次创建时调用，用于进行初始化操作，设置布局和获取数据等。通常在此方法中完成一些只需执行一次的操作。
+
+onStart()：在 Activity 可见但还未出现在前台时调用。在该方法中，可以执行一些准备工作，例如注册广播接收器或启动动画等。
+
+onResume()：在 Activity 出现在前台并获取焦点时调用。在该方法中，可以开始处理用户交互、启动动画或恢复暂停的任务等。
+
+onPause()：在 Activity 失去焦点但仍然可见时调用。在该方法中，应该暂停或释放一些资源，例如停止动画、保存数据或提交事务等。
+
+onStop()：在 Activity 不再可见时调用。在该方法中，可以执行一些清理工作，例如释放资源、取消注册广播接收器或停止后台任务等。
+
+onRestart()：在 Activity 从停止状态重新启动时调用。在该方法中，可以执行一些准备工作，例如重新加载数据或恢复界面状态等。
+
+onDestroy()：在 Activity 即将销毁时调用。在该方法中，应该释放所有的资源、取消注册的监听器或保存持久化数据等。
+
+除了上述方法，还有一些其他的生命周期方法，例如 onSaveInstanceState()、onRestoreInstanceState()、onActivityResult() 等，用于保存和恢复数据、处理返回结果等特定的场景。
+
+需要注意的是，Activity 的生命周期方法并不总是按照严格的顺序调用，并且在某些情况下可能会跳过某些方法。例如，当系统内存不足时，可能会直接销毁 Activity 而不调用 onStop() 和 onDestroy() 方法。
+
 ==================
-fragment
-onAttach
-onCreate
-onCreateView
-onActivityCreate
-onStart
-onResume
-onPause
-onStop
-onDestroyView
-onDestroy
-onDetach
+
+Fragment 的生命周期方法：
+
+onAttach(): 当 Fragment 被附加到 Activity 时调用。在这个方法中，你可以将 Fragment 与宿主 Activity 建立关联。
+
+onCreate(): 在 Fragment 创建时调用。在这个方法中，你可以进行一些初始化操作，例如设置变量、加载布局等。
+
+onCreateView(): 在创建 Fragment 的视图层次结构时调用。在这个方法中，你可以通过加载布局文件或动态创建视图来设置 Fragment 的 UI。
+
+onViewCreated(): 在 Fragment 的视图已经创建后调用。在这个方法中，你可以对视图进行进一步的初始化或获取视图中的控件。
+
+onActivityCreated(): 在与 Fragment 关联的 Activity 的 onCreate() 方法执行完成后调用。在这个方法中，你可以执行与 Activity 交互的操作，例如获取 Activity 中的 ViewModel 或调用 Activity 的方法。
+
+onStart(): 在 Fragment 可见但尚未获取焦点时调用。在这个方法中，你可以执行一些准备工作，例如注册广播接收器或启动动画。
+
+onResume(): 在 Fragment 获取焦点并可与用户交互时调用。在这个方法中，你可以执行与用户交互相关的操作，例如启动动画、开始计时器等。
+
+onPause(): 在 Fragment 失去焦点但仍可见时调用。在这个方法中，你可以暂停正在进行的操作，例如停止动画、保存用户输入等。
+
+onStop(): 在 Fragment 不再可见时调用。在这个方法中，你可以执行一些清理操作，例如取消网络请求、释放资源等。
+
+onDestroyView(): 在销毁 Fragment 的视图层次结构时调用。在这个方法中，你可以清理视图相关的资源。
+
+onDestroy(): 在销毁 Fragment 时调用。在这个方法中，你可以进行最终的清理操作，例如释放资源、取消注册等。
+
+onDetach(): 当 Fragment 与宿主 Activity 解除关联时调用。在这个方法中，你可以执行一些清理操作，例如释放对宿主 Activity 的引用。
 ```
 
 
@@ -2271,11 +2339,15 @@ onSaveInstanceState 会在跳转到其他页面时也会调用，当其他页面
 ### android 中进程的优先级?
 
 ```
-前台进程
-可见进程
-服务进程
-后台进程
-空进程
+前台进程（Foreground Process）：这是最高优先级的进程。它包含当前用户正在交互的 Activity 或正在执行前台服务（通过调用 startForeground() 方法启动的服务）。前台进程对用户体验至关重要，系统会尽力保持它们的运行，并将其视为不可杀死的。
+
+可见进程（Visible Process）：这是次高优先级的进程。它包含对用户可见但不在前台的 Activity。例如，当一个透明的 Activity 在前台运行时，它后面的 Activity 将成为可见进程。系统会尽量保持可见进程的运行，但在内存不足时，它们可能会被系统终止。
+
+服务进程（Service Process）：这是第三优先级的进程。它包含正在执行后台服务的进程。后台服务通常不与用户直接交互，但仍然在后台执行某些任务。系统会尽量保持服务进程的运行，但在内存不足时，它们可能会被系统终止。
+
+后台进程（Background Process）：这是第四优先级的进程。它包含不再对用户可见且没有正在执行服务的进程。后台进程对系统的性能影响较小，当系统需要回收内存时，它们是首先被终止的对象。
+
+空进程（Empty Process）：这是最低优先级的进程。它包含没有任何活动组件的进程。空进程通常被系统保留，以便快速启动新的进程，而无需重新创建进程。空进程的内存消耗很少。
 ```
 
 
@@ -2378,7 +2450,7 @@ android 程序内存一般限制在 16M，也有的是 24M。近几年手机发�
 ### apk打包过程
 
 ```
-1. 使用aapt工具处理所有的资源，生成一个R.java文件，一个resources.arsc文件以及其他资源。
+1. 使用aapt(Android Asset Packaging Tool）工具处理所有的资源，生成一个R.java文件，一个resources.arsc文件以及其他资源。
 2. aidl工具处理.aidl文件，生成对应的Java接口文件。
 3. 将上述两步得到的R.java文件、Java接口文件，与Andorid源码一起，通过Java编译器，编译得到Java字节码文件.class文件。
 4. 获取依赖的第三方库文件，将其与上一步得到的.class文件一起，通过使用dx工具，生成.dex文件。
@@ -2398,6 +2470,11 @@ android 程序内存一般限制在 16M，也有的是 24M。近几年手机发�
 ### v1 v2 v3签名有什么区别
 
 ```
+
+
+在验证应用程序的签名时，Android 系统会首先检查 CERT.RSA 文件，提取其中的公钥。然后，系统会使用公钥对 CERT.SF 文件进行解密，以验证签名文件的完整性和身份。最后，系统会进一步验证 MANIFEST.MF 文件的完整性，确保应用程序的清单信息没有被篡改。
+
+
 v1:
 MANIFEST.MF
 APK中的所有条目,SHA256消息摘要算法提取出该文件的摘要然后进行 BASE64 编码后，
@@ -2410,6 +2487,8 @@ CERT.RSA
 
 v1签名不校验META-INF，而v2签名将META-INF列入保护区，
 这种方式打出来的渠道包是过不了安装时候的签名验证的。
+
+
 
 v2:
 v2签名，首先整个APK（ZIP文件格式）会被分为以下四个区块
@@ -2653,6 +2732,16 @@ LOAD_CACHE_ELSE_NETWORK，只要本地有，无论是否过期，或者no-cache�
 
 
 
+```
+shouldInterceptRequest 拦截资源
+```
+
+
+
+
+
+
+
 ### 应用crash的本质原因是什么
 
 ```
@@ -2677,12 +2766,33 @@ OOM
 ### 多进程application在什么时候初始化
 
 ```
-A 和 B 页面，B页面设置为别的进程
-在启动A的时候，回去初始化application，在启动B之后，会启动新的进程，然后在初始化新进程的application
-
-
-在多进程Application只会是1个对象(单例)，但是onCreate方法在开启不同进程时，会调用。
+进程启动时：当一个新的进程启动时，Android 系统会为该进程创建一个新的应用程序实例。此时，可以在 Application 类的 onCreate() 方法中进行初始化操作。每个进程都会有自己的 Application 实例，因此在多进程应用程序中，每个进程的 onCreate() 方法会被调用。
 ```
+
+
+
+
+
+### 混淆为什么要保留，如何不输出log
+
+```
+native保留为了让C++层能调用到
+Activity保留让AndridManifest.xml能找到
+R资源保留能找到R文件对应的资源
+
+
+-assumenosideeffects class android.util.Log {
+    public static boolean isLoggable(java.lang.String, int);
+    public static int v(...);
+    public static int i(...);
+    public static int w(...);
+    public static int d(...);
+    public static int e(...);
+}
+使用这个配置时，一定要打开优化开关(也就是默认使用proguard-android-optimize.txt配置文件)
+```
+
+
 
 
 
@@ -3203,6 +3313,20 @@ apk在安装的时候，apk中的classes.dex会被虚拟机优化成odex文件�
 
 
 
+#### Robust怎么加载补丁包
+
+```
+当线上app反生bug后，可以通知客户端拉取对应的补丁包，下载补丁包完成后，会开一个线程执行以下操作：
+
+使用 DexClassLoader 加载外部 dex 文件，也就是我们生成的补丁包。
+反射获取 PatchesInfoImpl 中补丁包映射关系，如PatchedClassInfo("com.meituan.sample.Test", "com.meituan.robust.patch.TestPatchControl")。
+反射获取 Test 类插桩生成 changeQuickRedirect 对象，实例化 TestPatchControl，并赋值给 changeQuickRedirect
+```
+
+
+
+
+
 ### 插件化
 
 #### 启动activity的hook方式。taskAffity。
@@ -3294,7 +3418,10 @@ register("com.alibaba.android.arouter.routes.ARouter$$Root$$modulejava");
 其他组件：引入工具层，编写实现接口类，并加上注解AutoService(接口的class)
 通过Service.load方式获取到所有的实现类，调用相关的组件功能
 
-
+ServiceLoader<MyService> serviceLoader = ServiceLoader.load(MyService.class);
+for (MyService service : serviceLoader) {
+    service.doSomething();
+}
 ```
 
 #### 组件化-如果不用接口下沉，没有任何依赖，怎么方便的调用（不让用反射，太麻烦）
@@ -3318,12 +3445,12 @@ register("com.alibaba.android.arouter.routes.ARouter$$Root$$modulejava");
 #### LifeCycle
 
 ```
-Livecycle是一个表示android生命周期及状态的对象
-LivecycleOwner用于连接有生命周期的对象，如activity,fragment
-LivecycleObserver用于观察查LifecycleOwner
+Lifecycle是一个表示android生命周期及状态的对象
+LifecycleOwner用于连接有生命周期的对象，如activity,fragment
+LifecycleObserver用于观察查LifecycleOwner
 使用：getLifecycle().addObserver(new MyObserver());添加观察者
 
-addObserver:将LivecycleObserver封装成ObserverWithState(将观察者进行封装)，然后放入自定义map里
+addObserver:将LifecycleObserver封装成ObserverWithState(将观察者进行封装)，然后放入自定义map里
 Actiivty实现了LifecycleOwner，持有LifecycleRegistry对象(聚合多个LifecycleObserver,生命周期改变时进行通知)
 在onCreate中注入了空白的fragment监听生命周期，fragment生命周期里会去分发相应的事件，
 事件通过LifecycRegistry通知到各个LifecycleObserver。
@@ -4513,7 +4640,7 @@ https://www.jianshu.com/p/501690f88f68
 app启动：
 
 Activity调用到startActivityForResult->Instrumentation.execStartActivity，
-通过ActivityManager.getService获取IBinder，调用到ASM.startActivity
+通过ActivityManager.getService获取IBinder，调用到AMS.startActivity
 应用进程未启动->startProcessLocked->通过zygote启动
 ZygoteInit的main方法内部会创建Server端的Socket，等待AMS请求创建新的应用程序进程
 获取到应用进程的启动参数后，fork出应用进程,调用ActivityThread的main方法
@@ -4689,7 +4816,7 @@ prevMsg.next = msg.next 断开指向异步消息的 msg；然后返回这条消�
 #### 主线程每5秒钟发一个需要执行10秒的消息到子线程，会发生什么
 
 ```
-入队：根据时间排序，当队列满的时候，阻塞，直到用户通过next取出消息。当next方法被调用，通知MessagQueue可以进行消息的入队。
+主线程每5秒发送一个需要执行10秒的消息到子线程，会导致子线程在接收到消息后开始执行任务，并在任务执行期间无法处理其他消息。主线程不会等待子线程任务完成，而是继续执行后续的代码。这可能会导致主线程发送消息的频率高于子线程任务的执行速度，导致子线程的消息队列中积压大量未处理的消息。因此，需要根据具体需求和场景来设计合适的线程间通信机制，以确保任务的执行和消息的处理能够协调进行。
 ```
 
 #### HandlerThread
