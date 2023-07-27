@@ -4,6 +4,8 @@
 
 [玩机必看！带你入坑安卓刷机，小白也能看懂的ROOT基础指南来啦！](https://www.bilibili.com/video/BV1BY4y1H7Mc/?spm_id_from=333.337.search-card.all.click&vd_source=332f625deec165e69a48ae42c0edf5e1)
 
+[Google Pixel解锁BL、刷入Twrp及Root折腾小记](https://www.itfanr.cc/2018/10/16/google-pixel-unlock-bl-and-root/)
+
 
 
 ## 分区概念
@@ -84,11 +86,9 @@ bootloader 引导加载器(类似BIOS)
 
 
 
-### 2.ROOT
+### 2.刷第三方Recovery(TWRP)
 
-方法1：Recovery卡刷
-
-1.先刷一个好用的第三方Recovery(TWRP)
+#### 非A/B分区
 
 进入fastboot,执行刷写命令
 
@@ -96,7 +96,29 @@ bootloader 引导加载器(类似BIOS)
 fastboot flash recovery twrp.img
 ```
 
-2.root(使用Magisk工具)
+#### A/B分区
+
+1.刷入临时twrp
+
+```
+fastboot boot twrp.img
+```
+
+注意：这里没有flash
+
+
+
+2.刷入永久Twrp
+
+选择 `Install` – 找到目录 – 选择 `twrp*.zip` 文件 – 弹出安装界面 – 直接滑动底部的滑条 `Swipe to confirm Flash` 安装：
+
+安装完成后，点击下面的 `Reboot System` 按钮，重启系统。直接点击中间的 **`Do Not Install`** 即可。
+
+
+
+### 2.ROOT
+
+方法1：Recovery卡刷
 
 将magisk的包复制进手机，进到TWRP里刷入这个包，重启
 
@@ -104,15 +126,21 @@ fastboot flash recovery twrp.img
 
 
 
+
+
 方法2：Fastboot线刷
 
-直接在fastboot中刷boot镜像
+直接在fastboot中刷Magisk修复后的boot镜像
 
 ```
 fastboot flash boot boot.img
 ```
 
 
+
+boot镜像需要去各平台下载
+
+安装Magisk，点击安装选择boot.img进行修复后导出，执行刷入
 
 
 
@@ -161,10 +189,6 @@ fastboot -s (命令)
 通过fastboot devices获取序列号，控制多设备中的一个
 例：清除序列号为'abc'设备的system分区：fastboot -s abc erase system
 
-
-
-
-
 ```
 
 
@@ -175,14 +199,19 @@ fastboot -s (命令)
 进入fastboot模式，刷机recovery
 fastboot flash recovery D:\t.img
 
-fastboot flash boot xx.img
 
-
+pixel2刷机命令:
 fastboot flash boot boot.img
 fastboot flash vendor vendor.img
 fastboot flash system_a system.img
 fastboot flash system_b system_other.img
 fastboot flash userdata userdata.img
+fastboot flash vbmeta vbmeta.img
+fastboot reboot
+
+
+
+fastboot -w update root.zip
 fastboot reboot
 ```
 
@@ -201,7 +230,7 @@ https://cz-jam.lanzouj.com/iZICY02v2k8j
 驱动下载
 https://developers.google.com/android/drivers?hl=zh-cn
 
-USB驱动下载
+USB驱动下载(win fastboot无法识别设备)
 https://developer.android.com/studio/run/oem-usb?hl=zh-cn#Win10
 
 
