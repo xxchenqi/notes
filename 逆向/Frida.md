@@ -128,6 +128,75 @@ frida -H 192.168.71.96:8888 -f com.android.settings -l 0530.js --no-pause
 
 
 
+## 基础使用
+
+```
+./fs1280arm64
+```
+
+
+
+```
+frida -U pagkageName -l xx.js
+
+// -f 主动找到包名启动
+frida -U -f pagkageName -l xx.js
+%resume
+```
+
+
+
+```js
+function main(){
+    Java.perform(function(){
+        console.log("Inside Frida Java Perform !")
+        // hook
+        // overload 重载
+        // Java.use("com.cq.test.MainActivity").test.overload('java.lang.String', 'int').implementation
+        Java.use("com.cq.test.MainActivity").test.implementation = function(arg1, arg2) {
+            // 创建String实例
+            //Java.use('java.lang.String').$new("test");
+			// 主动调用test方法
+            var result = this.test(arg1, arg2);
+            // 打印堆栈信息
+            console.log(Java.use("android.util.Log").getStackTraceString(Java.use("java.lang.Throwable".$new())));
+            console.log("arg1,arg2,result", arg1, arg2, result);
+            return result;
+        }
+
+        // 寻找MainActivity实例
+        Java.choose("com.cq.test.MainActivity", {
+            onMatch:function(instance) {
+                console.log(instance);
+                // 通过实例调用方法
+                instance.test(10, 10);
+            }, onComplete:function(){}
+        })
+
+        // 调用静态方法
+        var result = Java.use("com.cq.test.MainActivity").staticTest();
+
+    })
+}
+
+function invoke(){
+    Java.perform(function(){
+        //...
+    })
+}
+
+// 立即执行 main函数
+setImmediate(main)
+
+// 延迟执行 invoke函数
+setTimeout(invoke, 3000)
+
+```
+
+
+
+
+
 
 
 ## objection使用
