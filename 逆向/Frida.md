@@ -101,7 +101,7 @@ easy_install frida-12.8.0-py3.7-win-amd64.egg
 python -c "import frida; print(frida.__version__)"
 ```
 
-**frida-server服务启动**
+**frida-server服务**
 
 ```
 1.下载frida-server(fs1280arm64)
@@ -115,7 +115,15 @@ adb shell
 su
 cd /data/local/tmp
 chmod 777 server
+
+```
+
+**启动服务**
+
+```
 ./fs1280arm64 -l 0.0.0.0:8888
+或者
+./fs1280arm64
 ```
 
 **验证:**
@@ -123,28 +131,190 @@ chmod 777 server
 ```
 frida-ps -H 192.168.71.96:8888
 注入
-frida -H 192.168.71.96:8888 -f com.android.settings -l 0530.js --no-pause
+frida -H 192.168.71.96:8888 -f com.android.settings -l x.js --no-pause
 ```
 
 
 
-## 基础使用
+## Frida基础使用
+
+#### 参考链接
+
+https://frida.re/docs/javascript-api/
+
+
+
+#### 启动
 
 ```
-./fs1280arm64
-```
-
-
-
-```
+通过USB启动
 frida -U pagkageName -l xx.js
 
 // -f 主动找到包名启动
-frida -U -f pagkageName -l xx.js
+frida -U -f pagkageName -l xx.js --no-pause
 %resume
+
+通过host启动
+frida -H 192.168.71.96:8888 -f packageName -l x.js 
 ```
 
 
+
+#### 在Java层面执行代码
+
+```js
+Java.perform(function(){...})
+```
+
+#### 方法hook
+
+```js
+Java.use("packageName.className").methodName.implementation = function(arg1) {
+    // 主动调用方法
+    var result = this.methodName(arg1);
+    // 方法返回
+    return result;
+}
+```
+
+#### 方法重载
+
+```js
+Java.use("packageName.className").methodName.overload('java.lang.String', 'int').implementation = function(arg1, arg2) {}
+```
+
+#### 创建String实例
+
+```js
+var strInstance = Java.use('java.lang.String').$new("test");
+```
+
+#### 寻找实例
+
+```js
+Java.choose("packageName.className", {
+    onMatch:function(instance) {
+        // 通过实例调用方法
+		instance.methodName();
+    },
+    onComplete:function(){}
+})
+```
+
+#### 调用静态方法
+
+```js
+var result = Java.use("packageName.className").staticMethodName();
+```
+
+#### 执行
+
+```js
+// 立即执行 main函数
+setImmediate(main)
+
+// 延迟执行 invoke函数
+setTimeout(invoke, 3000)
+```
+
+#### 堆栈信息打印
+
+```js
+console.log(Java.use("android.util.Log").getStackTraceString(Java.use("java.lang.Throwable".$new())));
+```
+
+#### 数组打印 或 [object]打印
+
+```js
+console.log(JSON.stringify(arg));
+```
+
+#### 构造数组
+
+```js
+var charArray = Java.array('char', ['a', 'b', 'c']);
+```
+
+#### 类型转换
+
+```js
+var testInstance = Java.cast(instance, Java.use("packageName.className"));
+```
+
+#### 创建java类
+
+```js
+var testClass = Java.registerClass({
+  name: 'packageName.className',
+  implements: [Java.use('packageName.className')],
+  methods: {
+    methodName: function() {}
+  }
+});
+
+// 创建实例并调用方法
+testClass.$new().methodName();
+```
+
+#### 相同函数和字段名称通过下划线区分
+
+```
+instance._same_name_bool_var.value = true ;
+```
+
+#### 反射修改函数
+
+```js
+Java.perform(function(){
+    var class_name = "com.example.androiddemo.Activity.FridaActivity4$InnerClasses" ;
+    var InnerClass = Java.use(class_name);
+    var all_methods = InnerClass.class.getDeclaredMethods();
+    for(var i = 0;i<all_methods.length;i++){
+        var method = all_methods[i];
+        var substring = method.toString().substr(method.toString().indexOf(class_name)+class_name.length+1);
+        var finalMethodString = substring.substr(0,substring.indexOf("("));
+        console.log(finalMethodString);
+        InnerClass[finalMethodString].implementation = function(){return true};
+    }
+})
+```
+
+#### 枚举 Java VM 中存在的类加载器
+
+```js
+Java.enumerateClassLoaders({
+    onMatch:function(loader){
+        try {
+            if(loader.findClass("com.example.androiddemo.Dynamic.DynamicCheck")){
+                // 修改类加载器
+                Java.classFactory.loader = loader;
+            }
+        } catch (error) {
+            console.log("found error "+error)
+        }
+    },onComplete:function(){"enum completed!"}
+})
+```
+
+#### 枚举加载的类
+
+```js
+Java.enumerateLoadedClasses({
+    onMatch:function(name,handle){
+        if(name.toString().indexOf("com.example.androiddemo.Activity.Frida6.Frida6") >= 0){
+            Java.use(name).check.implementation = function(){return true}
+        }
+    },onComplete(){}
+})
+```
+
+
+
+
+
+
+
+#### 例子
 
 ```js
 function main(){
@@ -190,7 +360,6 @@ setImmediate(main)
 
 // 延迟执行 invoke函数
 setTimeout(invoke, 3000)
-
 ```
 
 
