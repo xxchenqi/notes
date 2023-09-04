@@ -655,11 +655,11 @@ print!("{:?}\n",arr3);
 ```rust
 fn main() {
      // 栈分配的整型
-     let a = 88;
-     // 将 `a` *复制*到 `b`——不存在资源移动
-     let b = a;
-     // 两个值各自都可以使用
-     println!("a {}, and b {}", a, b);
+    let a = 88;
+    // 将a复制到b——不存在资源移动
+    let b = a;
+    // 两个值各自都可以使用
+    println!("a {}, and b {}", a, b);
 
     let v1 = vec!["Go语言极简一本通","Go语言微服务架构核心22讲","从0到Go语言微服务架构师"];
     let v2 =v1;
@@ -1623,7 +1623,7 @@ let 闭包变量 = |参数列表| {
 
 
 
-```
+```rust
 let double = |x| { x * 2 };
 
 let add = |a, b| { a + b };
@@ -1657,6 +1657,905 @@ println!("{}", add2(4));
 - 闭包虽然没有函数名，但可以把整个闭包赋值一个变量，通过调用该变量来完成闭包的调用。
 - 闭包不用声明返回值，但它却可以有返回值。并且使用最后一条语句的执行结果作为返回值。闭包的返回值可以赋值给变量。
 - 闭包又称之为 **内联函数**。可以让闭包访问外层函数里的变量。
+
+
+
+## 多线程
+
+### 创建线程
+
+```
+std::thread::spawn()
+
+//spawn() 函数的原型
+pub fn spawn<F, T>(f: F) -> JoinHandle<T>
+
+参数 f 是一个闭包（closure ） 是线程要执行的代码。
+```
+
+```rust
+fn main() {
+    //子线程
+    thread::spawn(|| {
+        for i in 1..10 {
+            println!("子线程 {}", i);
+            thread::sleep(Duration::from_millis(1));
+        }
+    });
+    // 主线程
+    for i in 1..5 {
+        println!("主线程 {}", i);
+        thread::sleep(Duration::from_millis(1));
+    }
+}
+
+```
+
+> 当主线程执行结束，子线程就自动结束。
+
+`thread::sleep()` 会让线程睡眠一段时间，某个线程睡眠的时候会让出 CPU，可以让不同的线程交替执行，要看操作系统如何调度线程。
+
+
+
+### join
+
+上面的例子主线程结束后，子线程还没有运行完，但是子线程也结束了。如果想让子线程结束后，主线程再结束，我们就要使用**Join 方法**，把子线程加入主线程等待队列。
+
+```
+spawn<F, T>(f: F) -> JoinHandle<T>
+```
+
+```rust
+//子线程
+let handler = thread::spawn(|| {
+    for i in 1..10 {
+        println!("子线程 {}", i);
+        thread::sleep(Duration::from_millis(1));
+    }
+});
+// 主线程
+for i in 1..5 {
+    println!("主线程 {}", i);
+    thread::sleep(Duration::from_millis(1));
+}
+handler.join().unwrap();
+```
+
+输出结果看 主线程让子线程执行完毕后，主线程才退出。
+
+
+
+## 错误处理
+
+错误分为两大类：**可恢复** 和 **不可恢复**，相当于其它语言的 **异常** 和 **错误**。
+
+| Name          | 描述                                       |
+| ------------- | ------------------------------------------ |
+| Recoverable   | 可以被捕捉，相当于其它语言的异常 Exception |
+| UnRecoverable | 不可捕捉，会导致程序崩溃退出               |
+
+### panic!() 不可恢复错误
+
+`panic!()` 程序立即退出，退出时调用者抛出退出原因。
+
+一般情况下，当遇到不可恢复错误时，程序会自动调用 `panic!()`。
+
+```rust
+fn main() {
+    panic!("出错啦");
+    println!("Hello Rust"); // 不可能执行的语句
+}
+//输出
+thread 'main' panicked at '出错啦', src/main.rs:2:5
+
+
+let v = vec!["Go语言极简一本通","Go语言微服务架构核心22讲","从0到Go语言微服务架构师"];
+v[5]; // 因为超出了数组的长度，所以会触发不可恢复错误
+
+```
+
+### Result 枚举和可恢复错误
+
+枚举的定义如下：
+
+```rust
+enum Result<T,E> {
+   OK(T),
+   Err(E)
+}
+```
+
+OK(T) **T** `OK` 时作为正常返回的值的数据类型。
+Err(E) **E** `Err` 时作为错误返回的错误的类型。
+
+```rust
+let f = File::open("abc.jpg"); //文件不存在，因此值为 Result.Err
+println!("{:?}",f);
+
+//输出
+Err(Os { code: 2, kind: NotFound, message: "No such file or directory" })
+```
+
+### unwrap() 和 expect()
+
+`unwrap()` 函数的原型如下
+
+```
+unwrap(self):T
+```
+
+`unwrap`是 Result<T, E>的方法，在实例上调用此方法时，如果是 Ok 枚举值，就会返回 Ok 中的对象，如果是 Err 枚举值，在运行时会 panic，报错信息是 format!(“{}”, error)。其缺点是，如果在不同地方都使用 unwrap，运行时出现 panic 的时候。
+
+```rust
+fn is_even(no:i32)->Result<bool,String> {
+    return if no % 2 == 0 {
+        Ok(true)
+    } else {
+        Err("输入值，不是偶数".to_string())
+    }
+}
+
+let result = is_even(6).unwrap();
+println!("结果 {}",result);
+//输出 结果 true
+
+let result = is_even(11).unwrap();
+println!("结果 {}",result);
+//输出 thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value: "输入值，不是偶数"'
+```
+
+
+
+函数 `expect()` 的原型如下
+
+```
+expect(self,msg:&str):T
+```
+
+`expect`方法的作用和`unwrap`类似，区别在于，`expect`方法接受`msg: &str`作为参数，它在运行时的`panic`信息为`format!("{}: {}", msg, error)`，使用`expect`时，可以自定义报错信息，因此出现`panic`时比较容易定位。
+
+```rust
+let f = File::open("abc.txt").expect("无法打开该文件"); // 文件不存在
+//输出 thread 'main' panicked at '无法打开该文件: Os { code: 2, kind: NotFound, message: "No such file or directory" }'
+```
+
+
+
+## 智能指针
+
+Rust 可以在 **堆** 上存储数据。Rust 语言中的某些类型，如 **向量 `Vector`** 和 **字符串对象 `String`** 默认就是把数据存储在 **堆** 上的。
+
+Rust 语言把指针封装在如下两个特质`Trait`中。
+
+| 特质名 | 包              | Description                                                  |
+| ------ | --------------- | ------------------------------------------------------------ |
+| Deref  | std::ops::Deref | 用于创建一个只读智能指针，例如 `*v`                          |
+| Drop   | std::ops::Drop  | 智能指针超出它的作用域范围时会回调该特质的 `drop()` 方法。 类似于其它语言的 **析构函数**。 |
+
+当一个结构体实现了以上的接口后，它们就不再是普通的结构体了。
+
+Rust 提供了在 **堆** 上存储数据的能力并把这个能力封装到了 `Box` 中。
+
+这种把 **栈** 上数据搬到 **堆** 上的能力，我们称之为 **装箱**。
+
+
+
+### Box 指针
+
+Box 指针可以把数据存储在**堆（heap）**上，而不是**栈（stack）**上。这就是**装箱（box）**，**栈（stack）**还是包含指向 **堆（heap）** 上数据的指针。
+
+```rust
+fn main() {
+    let a = 6;           // 默认保存在 栈 上
+    let b = Box::new(a); // 使用 Box 后数据会存储在堆上
+    println!("b = {}", b);// 输出 b = 6
+}
+```
+
+### 访问 Box 存储的数据
+
+如果想访问 Box 存储的数据，可以使用 **星号** *访问，这个操作叫做 **解引用**。 **星号** *也叫 解引用符。
+
+```rust
+let price1 = 158;           // 值类型数据
+let price2 = Box::new(price1); // price2 是一个智能指针，指向堆上存储的数据 158
+println!("{}",158==price1);
+println!("{}",158==*price2); // 为了访问 price2 存储的具体数据，需要解引用
+
+//输出
+true
+true
+```
+
+
+
+### Deref 特质
+
+实现 `Deref` 特质需要我们实现 `deref()` 方法。`deref()` 方法返回一个指向结构体内部数据的指针。
+
+```rust
+struct CustomBox<T>{
+    value: T
+}
+
+impl<T> CustomBox<T> {
+    fn new(v:T)-> CustomBox<T> {
+        CustomBox{value:v}
+    }
+}
+
+impl<T> Deref for CustomBox<T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        &self.value
+    }
+}
+
+let x = 666;
+let y = CustomBox::new(x);  // 调用静态方法 new() 返回创建一个结构体实例
+
+println!("666==x is {}",666==x);
+println!("666==*y is {}",666==*y);  // 解引用 y
+println!("x==*y is {}",x==*y);  // 解引用 y
+//输出
+666==x is true
+666==*y is true
+x==*y is true
+```
+
+### Drop 特质
+
+`Drop Trait` 只有一个方法 `drop()`。当实现了 `Drop Trait` 的结构体，在超出了它的作用域范围时会触发调用 `drop()` 方法。
+
+```rust
+impl<T> Drop for CustomBox<T>{
+    fn drop(&mut self){
+        println!("drop CustomBox 对象!");
+    }
+}
+```
+
+## 包管理
+
+| 命令           | 说明                                                     |
+| -------------- | -------------------------------------------------------- |
+| `cargo new`    | 在当前目录下新建一个 cargo 项目                          |
+| `cargo check`  | 分析当前项目并报告项目中的错误，但不会编译任何项目文件   |
+| `cargo build`  | 编译当前项目                                             |
+| `cargo run`    | 编译并运行文件 `src/main.rs`                             |
+| `cargo clean`  | 移除当前项目下的 `target` 目录及目录中的所有子目录和文件 |
+| `cargo update` | 更新当前项目中的 `Cargo.lock` 文件列出的所有依赖         |
+
+
+
+## 模块(Modules)
+
+### 定义模块
+
+```rust
+mod module_name {
+   fn function_name() {
+      // 具体的函数逻辑
+   }
+}
+```
+
+1. module_name 要是一个合法的名称。
+2. Rust 语言中的模块默认是私有的。
+3. 如果一个模块或者模块内的函数需要导出为外部使用，则需要添加 `pub` 关键字。
+4. 私有的模块不能为外部其它模块或程序所调用。
+5. 私有模块的所有函数都必须是私有的，而公开的模块，则即可以有公开的函数也可以有私有的函数。
+
+```rust
+//公开的模块
+pub mod public_module {
+   pub fn public_function() {
+      // 公开的方法
+   }
+   fn private_function() {
+      // 私有的方法
+   }
+}
+//私有的模块
+mod private_module {
+
+   // 私有的方法
+   fn private_function() {
+   }
+}
+```
+
+### `use` 关键字
+
+```
+use 公开的模块名::函数名;
+```
+
+在根目录下，执行 cargo new –lib mylib,创建类库。
+
+```rust
+pub mod add_salary {
+    pub fn study(name:String) {
+        println!("面向加薪学习 {}",name);
+    }
+}
+
+第一步 进入 mylib目录执行cargo build
+第二步 打开根目录 Cargo.toml
+[dependencies]
+mylib={ path="../module_demo/mylib" }
+第三步 在main.rs中修改
+use mylib::add_salary::study;
+
+fn main(){
+    study("从0到Go语言微服务架构师".to_string());
+}
+
+use AddSalary::study;
+
+fn main() {
+    study("从0到Go语言微服务架构师".to_string());
+}
+//输出
+面向加薪学习 从0到Go语言微服务架构师
+```
+
+Rust 允许一个模块中嵌套另一个模块，换种说法，就是允许多层级模块。
+
+```
+pub mod mod1 {
+   pub mod mod2 {
+      pub mod mod3 {
+         pub fn 方法名(参数) {
+            //代码逻辑
+         }
+      }
+   }
+}
+```
+
+调用或使用嵌套模块的方法使用两个冒号 (`::`) 从左到右拼接从外到内的模块即可
+
+```
+use mod1::mod2::mod3::方法名;
+
+fn main() {
+    方法名();
+}
+```
+
+
+
+
+
+## 变量绑定
+
+变量绑定默认是不可变的（immutable），但加上 mut 修饰语后变量就可以改变。
+
+### 作用域和遮蔽
+
+变量绑定有一个作用域（scope），它被限定只在一个代码块（block）中生存（live）。 代码块是一个被 {} 包围的语句集合。另外也允许变量遮蔽（variable shadowing）。
+
+```rust
+// 此绑定生存于 main 函数中
+let spend = 1;
+// 这是一个代码块，比 main 函数拥有更小的作用域
+{
+    // 此绑定只存在于本代码块
+    let target = "面向加薪学习";
+
+    println!("inner short: {}", target);
+
+    // 此绑定*遮蔽*了外面的绑定
+    let spend = 2.0;
+
+    println!("inner long: {}", spend);
+}
+// 代码块结束
+
+// 报错！`target` 在此作用域上不存在
+// error[E0425]: cannot find value `target` in this scope
+println!("outer short: {}", target);
+
+println!("outer long: {}", spend);
+
+// 此绑定同样*遮蔽*了前面的绑定
+let spend = String::from("学习时间1小时");
+
+println!("outer spend: {}", spend);
+```
+
+
+
+### 变量先声明
+
+可以先声明（declare）变量绑定，后面才将它们初始化（initialize）。但是这种做法很少用，因为这样可能导致使用未初始化的变量。
+编译器禁止使用未经初始化的变量，因为这会产生未定义行为（undefined behavior）。
+
+```rust
+// 声明一个变量绑定
+let spend;
+
+{
+    let x = 2;
+
+    // 初始化一个绑定
+    spend = x * x;
+}
+
+println!("spend: {}", spend);
+
+let spend2;
+
+// 报错！使用了未初始化的绑定
+println!("spend2: {}", spend2);
+// 改正 ^ 注释掉此行
+
+spend2 = 1;
+
+println!("another binding: {}", spend2);
+```
+
+
+
+### 冻结
+
+资源存在使用的引用时，在当前作用域中这一资源是不可被修改的，称之为“冻结”。
+
+```rust
+let mut spend4 = Box::new(1);
+let spend5 = &spend4;
+spend4= Box::new(100);
+println!("{}", spend4);
+println!("{}", spend5);
+
+报错如下
+let spend5 = &spend4;
+------- borrow of `spend4` occurs here
+spend4= Box::new(100);
+^^^^^^ assignment to borrowed `spend4` occurs here
+println!("{}", spend4);
+println!("{}", spend5);
+------ borrow later used here
+```
+
+
+
+## 类型系统
+
+### 类型转换
+
+Rust 不提供原生类型之间的隐式类型转换，但可以使用 **as** 关键字进行显式类型转换。
+
+```rust
+let spend = 1;
+// 错误！不提供隐式转换
+// error[E0308]: mismatched types
+// let cost: f64 = spend;
+
+// 可以显式转换
+let cost = spend as f64;
+println!("转换: {} -> {}", spend, cost);
+```
+
+### 字面量
+
+对数值字面量，只要把类型作为后缀加上去，就完成了类型说明。比如指定字面量 42 的 类型是 i32，只需要写 42i32。
+
+无后缀的数值字面量，其类型取决于怎样使用它们。如果没有限制，编译器会对整数使用 i32，对浮点数使用 f64。
+
+```rust
+// 带后缀的字面量，其类型在初始化时已经知道了。
+ let x = 1u8;
+ let y = 2u32;
+ let z = 3f32;
+
+ // 无后缀的字面量，其类型取决于如何使用它们。
+ let i = 1;
+ let f = 1.0;
+```
+
+### 类型推断
+
+Rust 的类型推断引擎是很聪明的，它不只是在初始化时看看右值（r-value）的 类型而已，它还会考察变量之后会怎样使用，借此推断类型。
+
+```rust
+// 因为有类型说明，编译器知道类型String
+let study = String::from("从0到Go语言微服务架构师");
+
+// 创建一个空向量（vector，即不定长的，可以增长的数组）。
+let mut vec = Vec::new();
+// 现在编译器还不知道 `vec` 的具体类型，只知道它是某种东西构成的向量（`Vec<?>`）
+
+// 在向量中插入元素。
+vec.push(study);
+// 现在编译器知道 `vec` 是 String 的向量了（`Vec<String>`）。
+println!("{:?}", vec);
+```
+
+### 别名
+
+type 新名字 = 原名字;
+
+```rust
+type MyU64 = u64;
+type OtherU64 = u64;
+type ThirdU64 = u64;
+fn main(){
+    let MyU64: MyU64 = 5 as ThirdU64;
+    let otherU64: OtherU64 = 2 as ThirdU64;
+    println!(
+        "{} MyU64 + {} OtherU64es = {} unit?",
+        MyU64,
+        otherU64,
+        MyU64 + otherU64
+    );
+}
+```
+
+注意类型别名*并不能*提供额外的类型安全，因为别名*并不是*新的类型。
+
+
+
+## 类型转换
+
+Rust 使用 trait 解决类型之间的转换问题。最一般的转换会用到 From 和 Into 两个 trait。
+
+### From
+
+From trait 允许一种类型定义 “怎么根据另一种类型生成自己”，因此它提供了一种类型转换的简单机制。在标准库中有无数 From 的实现，规定原生类型及其他常见类型的转换功能。
+
+```rust
+let s1 = "从0到Go语言微服务架构师";
+let s2 = String::from(s1);
+
+
+#[derive(Debug)]
+struct MyNumber {
+    num: i32,
+}
+
+impl From<i32> for MyNumber {
+    fn from(item: i32) -> Self {
+        MyNumber { num: item }
+    }
+}
+fn main() {
+    let my_number = MyNumber { num: 1 };
+    println!("{:?}", my_number);
+}
+```
+
+### Into
+
+Into trait 就是把 From trait 倒过来而已。也就是说，如果你为你的类型实现了 From，那么同时你也就免费获得了 Into。
+使用 Into trait 通常要求指明要转换到的类型，因为编译器大多数时候不能推断它。不过考虑到我们免费获得了 Into，这点代价不值一提。
+
+```rust
+let spend = 3;
+let my_spend: MyNumber = spend.into();
+println!("{:?}", my_spend);
+```
+
+### 解析字符串
+
+只要对目标类型实现了 FromStr trait，就可以用 parse 把字符串转换成目标类型。 标准库中已经给无数种类型实现了 FromStr。如果要转换到用户定义类型，只要手动实现 FromStr 就行。
+
+```rust
+let cost: i32 = "5".parse().unwrap();
+println!("{}", cost);
+```
+
+
+
+
+
+## match 匹配
+
+Rust 通过 match 关键字来提供模式匹配，和 C 语言的 switch 用法类似。第一个匹配分支会被比对，并且所有可能的值都必须被覆盖。
+
+
+
+### 解构指针和引用
+
+- 解引用使用 *
+- 解构使用 &、ref、和 ref mut
+
+```rust
+// 获得一个 `i32` 类型的引用。`&` 表示取引用。
+let num = &100;
+
+match num {
+    // 用 `&val` 这个模式去匹配 `num`
+    &val => println!("&val 是: {:?}", val),
+}
+
+// 如果不想用 `&`，需要在匹配前解引用。
+match *num {
+    val => println!("val 是: {:?}", val),
+}
+
+// Rust 对这种情况提供了 `ref`。它更改了赋值行为，从而可以对具体值创建引用。
+// 下面这行将得到一个引用。
+let ref num3 = 66;
+
+// 相应地，定义两个非引用的变量，通过 `ref` 和 `ref mut` 仍可取得其引用。
+let num4 = 5;
+let mut mut_num4 = 7;
+
+// 使用 `ref` 关键字来创建引用。
+// 下面的 r 是 `&i32` 类型，它像 `i32` 一样可以直接打印，因此用法上
+// 似乎看不出什么区别。但读者可以把 `println!` 中的 `r` 改成 `*r`，仍然能
+// 正常运行。前面例子中的 `println!` 里就不能是 `*val`，因为不能对整数解
+// 引用。
+match num4 {
+    ref r => println!("num4 r is: {:?}", r),
+}
+
+// 类似地使用 `ref mut`。
+match mut_num4 {
+    ref mut m => {
+        // 已经获得了 `mut_value` 的引用，先要解引用，才能改变它的值。
+        *m += 10;
+        println!("`mut_value`: {:?}", m);
+    }
+}
+```
+
+### 解构结构体
+
+```rust
+struct Study {
+    name: String,
+    target: String,
+    spend: u32,
+}
+fn main(){
+
+    let s = Study {
+            name: String::from("从0到Go语言微服务架构师"),
+            target: String::from("全面掌握Go语言微服务落地，代码级一次性解决微服务和分布式系统。"),
+            spend: 3,
+    };
+
+    let Study {
+            name: name,
+            target: target,
+            spend: spend,
+    } = s;
+
+    println!("name = {}, target = {},  spend = {} ", name, target, spend);
+    // name = 从0到Go语言微服务架构师, target = 全面掌握Go语言微服务落地，代码级一次性解决微服务和分布式系统。,  spend = 3
+    let s2 = Study {
+            name: String::from("《Go语言极简一本通》"),
+            target: String::from("学习Go语言，并且完成一个单体服务。"),
+            spend: 5,
+    };
+    // 也可以忽略某些变量
+    let Study { name, .. } = s2;
+    println!("name = {}", name);
+    //name = 《Go语言极简一本通》
+}
+```
+
+
+
+## if let 和 while let
+
+在一些场合下，用 match 匹配枚举类型并不优雅。
+if let 在这样的场合要简洁得多，并且允许指明数种失败情形下的选项：
+
+```rust
+let s = Some("从0到Go语言微服务架构师");
+let s1: Option<i32> = None;
+let s2: Option<i32> = None;
+
+// 如果 `let` 将 `s` 解构成 `Some(i)`，则执行语句块（`{}`）
+if let Some(i) = s {
+    println!("已上车 {:?}!", i);
+}
+
+// 如果要指明失败情形，就使用 else：
+if let Some(i) = s1 {
+    println!("Matched {:?}!", i);
+} else {
+    // 解构失败。切换到失败情形。
+    println!("不匹配。");
+};
+
+// 提供另一种失败情况下的条件。
+let flag = false;
+if let Some(i) = s2 {
+    println!("Matched {:?}!", i);
+// 解构失败。使用 `else if` 来判断是否满足上面提供的条件。
+} else if flag {
+    println!("不匹配s2");
+} else {
+    // 条件的值为 false。于是以下是默认的分支：
+    println!("默认分支");
+};
+输出
+已上车 "从0到Go语言微服务架构师"!
+不匹配。
+
+
+```
+
+### while let
+
+```rust
+// 将 `optional` 设为 `Option<i32>` 类型
+let mut num = Some(0);
+
+// 当 `let` 将 `optional` 解构成 `Some(i)` 时，就
+// 执行语句块（`{}`）。否则就 `break`。
+while let Some(i) = num {
+    if i > 9 {
+        println!("{},quit!",i);
+        num = None;
+    } else {
+        println!("`i` is `{:?}`. Try again.", i);
+        num = Some(i + 1);
+    }
+}
+```
+
+
+
+## 闭包的使用
+
+```rust
+let add = |x, y| x + y;
+let result = add(3, 4);
+println!("{}", result);
+```
+
+```rust
+fn receives_closure<F>(closure: F)
+    where
+        F: Fn(i32, i32) -> i32,
+{
+    let result = closure(3, 5);
+    println!("闭包作为参数执行结果 => {}", result);
+}
+
+fn main() {
+    let add = |x, y| x + y;
+    receives_closure(add);
+}
+
+输出:
+闭包作为参数执行结果 => 8
+```
+
+```rust
+fn receives_closure2<F>(closure:F)
+    where
+        F:Fn(i32)->i32{
+    let result = closure(1);
+    println!("closure(1) => {}", result);
+}
+
+fn main() {
+    let y = 2;
+    receives_closure2(|x| x + y);
+
+    let y = 3;
+    receives_closure2(|x| x + y);
+}
+输出:
+捕获变量的结果 => 3
+捕获变量的结果 => 4
+```
+
+返回闭包
+
+当函数返回一个闭包时，由于闭包的类型是匿名的、无法直接写出的，因此需要使用 `impl Trait` 来指定闭包的类型。
+
+```rust
+fn returns_closure() -> impl Fn(i32) -> i32 {
+    |x| x + 6
+}
+
+fn main() {
+    let closure = returns_closure();
+    println!("返回闭包 => {}", closure(1));
+}
+输出:
+返回闭包 => 7
+```
+
+参数和返回值都有闭包
+
+```rust
+fn do1<F>(f: F, x: i32) -> impl Fn(i32) -> i32
+    where
+        F: Fn(i32, i32) -> i32{
+    move |y| f(x, y)
+}
+
+fn main() {
+    let add = |x, y| x + y;
+    let result = do1(add, 5);
+    println!("result(1) => {}", result(1));
+}
+输出
+result(1) => 6
+```
+
+
+
+下面我们考虑一下是否可以做一个通用的
+
+```rust
+fn do2<F, X, Y, Z>(f: F, x: X) -> impl Fn(Y) -> Z
+    where
+        F: Fn(X, Y) -> Z{
+    move |y| f(x, y)
+}
+```
+
+报错如下
+
+```
+error[E0507]: cannot move out of `x`, a captured variable in an `Fn` closure
+  --> src/main.rs:12:16
+   |
+9  | fn do2<F, X, Y, Z>(f: F, x: X) -> impl Fn(Y) -> Z
+   |                          - captured outer variable
+...
+12 |     move |y| f(x, y)
+   |     -----------^----
+   |     |          |
+   |     |          move occurs because `x` has type `X`, which does not implement the `Copy` trait
+   |     captured by this `Fn` closure
+```
+
+```rust
+fn do2<F, X, Y, Z>(f: F, x: X) -> impl Fn(Y) -> Z
+    where
+        F: Fn(X, Y) -> Z,
+        X: Copy{
+    move |y| f(x, y)
+}
+fn main(){
+    let add = |x, y| x + y;
+    let result = do2(add, 5);
+    println!("result(2) => {}", result(2));
+}
+输出
+result(2) => 7
+```
+
+
+
+## Async/Await
+
+```rust
+use async_std::task::{sleep, spawn};
+use std::time::Duration;
+
+async fn do3() {
+    for i in 1..=5 {
+        println!("do3 {}", i);
+        sleep(Duration::from_millis(500)).await;
+    }
+}
+
+async fn do4() {
+    for i in 1..=5 {
+        println!("do4 {}", i);
+        sleep(Duration::from_millis(1000)).await;
+    }
+}
+
+#[async_std::main]
+async fn main() {
+    let do3_async = spawn(do3());
+    do4().await;
+    do3_async.await;
+}
+```
 
 
 
