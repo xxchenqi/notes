@@ -114,6 +114,7 @@ docker run
 	-t 给容器分配伪终端,容器创建后自动进入容器中，退出容器后，容器自动关闭。
 	-d 后台运行创建,创建容器在后台运行，退出后，容器不会关闭。
 	--name=[name] 容器名称(=也可用空格代替)
+	--user=root 以root权限启动容器
 	images:version 镜像和镜像的版本
 	/bin/bash 进入容器的初始化指令(相当于打开shell)
 ```
@@ -134,6 +135,9 @@ docker ps -a
 
 查看所有容器id
 docker ps -aq
+
+查看容器大小
+docker ps -s
 ```
 
 ```
@@ -145,6 +149,8 @@ CONTAINER ID   IMAGE     COMMAND       CREATED          STATUS          PORTS   
 
 ```
 docker exec -it [name] /bin/bash
+
+-u root 指定root权限
 ```
 
 ### 停止容器
@@ -607,7 +613,17 @@ docker pull 私有仓库服务器IP:5000/centos:7
 
 
 
-## docker容器虚拟化与传统虚拟机比较
+## Docker私有仓库Harbor(推荐)
+
+```
+TODO
+```
+
+
+
+
+
+## Docker容器虚拟化与传统虚拟机比较
 
 相同:
 
@@ -624,4 +640,251 @@ docker pull 私有仓库服务器IP:5000/centos:7
 | 硬盘使用   | 一般为MB           | 一般为GB   |
 | 性能       | 接近原生           | 弱于       |
 | 系统支持量 | 单机支持上千个容器 | 一般几十个 |
+
+
+
+
+
+
+
+## Docker搭建Jenkins
+
+### Jenkins安装
+
+```
+# 拉取镜像
+docker pull jenkins/jenkins:lts-jdk11
+
+# 创建容器
+docker run -d -p 8081:8080 --user=root --name jenkins_root --restart=always -v D:\docker_data\jenkins_home_jdk11:/var/jenkins_home jenkins/jenkins:lts-jdk11
+
+# 创建容器关联tomcat目录
+docker run -d -p 8081:8080 --user=root --name jenkins_root --restart=always -v D:\docker_data\jenkins_home_jdk11:/var/jenkins_home -v D:\docker_data\tomcat:/var/tomcat jenkins_android
+
+说明: --user=root 创建容器后ssh都是被放在/root/.ssh下的,不指定则是放在/var/jenkins_home/.ssh下的
+
+# 重启后直接关闭解决方式(跳过，上面已经加过了)
+docker container update --restart=always 容器名字
+
+# 访问
+localhost:8081
+
+# 初始密码文件位置
+/var/jenkins_home/secrets/initialAdminPassword
+
+# 更改镜像源(设置-系统管理-插件管理)
+http://mirrors.tuna.tsinghua.edu.cn/jenkins/updates/update-center.json
+
+安装插件
+1.chinese
+2.Role-based Authorization Strategy
+3.Credentials Binding
+4.git
+5.Deploy to	container
+6.Maven Integration
+7.Pipeline
+8.gitlab hook
+9.gitlab
+10.Email Extension Template
+11.SonarQube Scanner
+```
+
+
+
+### 权限配置
+
+```
+1.配置策略(必须配置，否则没有规则选项)
+全局安全配置-授权策略-选择Role-based Strategy-保存
+
+2.Manage and Assign Roles 分配权限
+```
+
+
+
+### 凭证管理
+
+```
+1.进到jenkins容器中
+2.生成公钥和私钥
+(1)ssh-keygen -t rsa
+(2)生成known_host
+git ls-remote -h [sshUrl] HEAD
+git ls-remote -h git@gitlab.sherc.net:chenqi/DigitalTeaching.git HEAD
+
+3.将公钥存到gitlab
+4.将私钥存到jenkins
+(1)系统管理-凭据管理-全局-Add Credentials
+(2)描述: gitlab-auth-ssh
+(3)username: 随便写
+(4)将私钥放进去
+
+解释：
+Q:gitlab中配置了自己电脑的公钥，jenkins中配置了自己电脑的私钥，那为什么还需要在jenkins服务器中在创建私钥呢？
+A:实际可以不需要，主要是方便在服务器上clone代码，另外known_host文件不依赖ssh生成的公私钥,可以直接通过git ls-remote -h [sshUrl] HEAD 或者 git clone 方式生成。
+
+Q:known_hosts 文件是什么
+A:known_hosts 文件存储用户访问的主机的公钥。这是一个非常重要的文件，它通过将用户的身份保存到本地系统来确保用户连接到合法的服务器。这也有助于避免中间人攻击。
+当你通过SSH连接到一个新的远程服务器时，系统会提示你是否要将远程主机添加到 known_hosts 文件：
+选择 yes，服务器的连接信息会保存在你的系统中。
+
+Q:known_hosts文件存储用户访问的主机的公钥。这个公钥和 ssh-keygen -t rsa生成的公钥是一个意思吗？
+A:不完全是。known_hosts 文件存储的是远程主机的公钥，而 ssh-keygen -t rsa 命令生成的是本地用户的公钥。
+```
+
+
+
+### AndroidSdk配置
+
+```
+cd /var/jenkins_home
+
+下载老版本的sdkmanager(此版本为老版本)
+curl -o sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip
+
+解压文件后目录格式需要转换下
+sdk\cmdline-tools\latest\...
+必须加latest
+
+配置环境变量
+cd ~/.bashrc
+vim ~/.bashrc
+export ANDROID_HOME="/var/jenkins_home/sdk/AndroidSdk"
+export PATH="$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+
+source ~/.bashrc
+
+安装
+sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+输入y
+
+
+说明:
+A:为什么没有下最新版本的commandlinetools
+Q:最新版本需要jdk17,需要额外配置。
+最新版的下载地址
+https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip
+
+A:为什么将sdk放在jenkins_home目录里
+Q:因为jenkins_home是数据卷映射目录，方便移植
+
+```
+
+
+
+
+
+
+
+### 其他
+
+#### 工具
+
+```
+apt-get update
+
+apt-get install vim
+apt-get install zip
+```
+
+
+
+#### Dockerfile(SDK外置，不推荐)
+
+```dockerfile
+# 基于已有的镜像 jenkins/jenkins 来构建新镜像
+FROM jenkins/jenkins:lts-jdk11
+
+USER root
+
+RUN echo 'export ANDROID_HOME="/var/jenkins_home/sdk/AndroidSdk"' >> ~/.bashrc
+RUN echo 'export PATH="$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"' >> ~/.bashrc
+RUN /bin/bash -c "source ~/.bashrc"
+```
+
+
+
+```
+docker build -t jenkins_android -f ./dockerfile . 
+
+docker run -d -p 8081:8080 --user=root --name jenkins_android --restart=always -v D:\docker_data\jenkins_home_jdk11:/var/jenkins_home jenkins_android
+```
+
+
+
+#### Dockerfile(SDK内置)
+
+```dockerfile
+# 基于已有的镜像 jenkins/jenkins 来构建新镜像
+FROM jenkins/jenkins:lts-jdk11
+
+USER root
+
+# 设置变量
+ENV SDK_TOOL_URL="https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip"
+ENV ANDROID_HOME="/opt/AndroidSdk"
+ENV PATH="$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+
+
+# 创建android sdk目录,并下载 sdkmanager,cmdline-tools中需要创建latest文件夹，否则执行sdkmanager会报错
+RUN mkdir -p ${ANDROID_HOME} \
+     && cd $ANDROID_HOME \
+     && curl -o sdk.zip $SDK_TOOL_URL \
+     && unzip sdk.zip \
+     && rm sdk.zip \
+	 && cd ${ANDROID_HOME}/cmdline-tools/ \
+	 && ls \
+	 && mkdir -p ${ANDROID_HOME}/cmdline-tools/latest \
+	 && mv NOTICE.txt  latest/ \	 
+	 && mv bin/ latest/ \	 
+	 && mv source.properties latest/ \	 
+	 && mv lib/ latest/ \
+	 && echo yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+```
+
+```
+说明:
+1.
+多行命令不要写多个RUN，原因是Dockerfile中每一个指令都会建立一层。多少个RUN就构建了多少层镜像，会造成镜像的臃肿、多层，不仅仅增加了构件部署的时间，还容易出错。RUN书写时的换行符是\
+
+2.设置环境变量用ENV设置，ENV指令设置环境变量时，并不是将环境变量写入到文件中。而是将环境变量直接设置在容器的运行时环境中。
+设置环境变量不要去写到bashrc里，推荐使用的是ENV
+
+```
+
+
+
+```
+docker build -t jenkins_android -f ./dockerfile . 
+
+docker run -d -p 8082:8080 --user=root --name jenkins_android --restart=always -v D:\docker_data\jenkins_home_jdk11:/var/jenkins_home jenkins_android
+```
+
+```
+执行下ssh
+```
+
+
+
+#### 镜像打包
+
+```
+docker commit [容器id] [镜像名称]
+
+docker run -d -p 8082:8080 --user=root --name jenkins_android --restart=always -v D:\docker_data\jenkins_home_jdk11:/var/jenkins_home jenkins_android
+
+```
+
+
+
+
+
+#### 完整启动命令
+
+```
+docker run -d -p 8081:8080 --user=root --name jenkins_android --restart=always -v D:\docker_data\jenkins_home_jdk11:/var/jenkins_home -v D:\docker_data\tomcat:/var/tomcat jenkins_android
+```
+
+
 
