@@ -156,6 +156,17 @@ frida -U -f pagkageName -l xx.js --no-pause
 
 通过host启动
 frida -H 192.168.71.96:8888 -f packageName -l x.js 
+
+
+说明：
+-f 以附加模式启动该应用程序，并注入JavaScript脚本。
+
+附加模式（attach mode）和普通模式（spawn mode）是两种不同的启动方式，它们有以下区别：
+附加模式适用于已经运行的应用程序，而普通模式适用于尚未运行的应用程序。选择使用哪种模式取决于用户的具体需求和场景。
+
+"--no-pause" 选项告诉 Frida 在注入代码后不要暂停目标应用程序的执行。
+执行 "%resume" 命令，以恢复目标应用程序的执行。
+
 ```
 
 
@@ -477,5 +488,133 @@ plugin dexdump search
 
 dump dex
 plugin dexdump dump 
+```
+
+
+
+## RPC
+
+### 方式一
+
+```js
+function invoke(){
+    Java.perform(function(){
+        Java.choose("com.example.lesson4one.MainActivity",{
+            onMatch:function(instance){
+                console.log("found instance :",instance)
+                console.log("found instance :",instance.secret())
+            },onComplete:function(){}
+        })
+    })
+}
+
+// 将invoke函数导出为Frida的RPC（远程过程调用）接口，以便在外部脚本或工具中调用该函数。
+rpc.exports = {
+    invokefunc:invoke
+}
+```
+
+
+
+```python
+import time
+import frida
+
+def my_message_handler(message,payload):
+    print(message)
+    print(payload)
+
+device = frida.get_device_manager().add_remote_device("192.168.1.102:9999")
+print(device.enumerate_processes())
+
+session = device.attach("com.example.lesson4one")
+with open("lesson7lesson4.js") as f :
+    script = session.create_script(f.read())
+script.on("message",my_message_handler)
+script.load()
+
+command = ""
+while True :
+    command = input("Enter Command:")
+    if command == "1":
+        break
+    elif command == "2":
+        script.exports.invokefunc()
+```
+
+
+
+### 方式二
+
+```js
+Java.perform(function () {
+    Java.use("android.widget.TextView").setText.overload('java.lang.CharSequence').implementation = function (x) {
+        var string_to_send_x = x.toString();
+        var string_to_recv;
+        console.log("js-string_to_send_x:" + string_to_send_x)
+        // 使用Frida的send()函数将字符串string_to_send_x发送给外部。(回调my_message_handler函数)
+        send(string_to_send_x);
+        /*
+        	使用Frida的recv()函数接收外部发送的消息，并在回调函数中处理接收到的消息。
+        	这里使用了wait()函数来等待接收到消息后再继续执行。
+        	调用了script.post({"my_data":data})后,回调到这里
+        */
+        recv(function (received_json_objection) {
+            string_to_recv = received_json_objection.my_data
+            console.log("js-string_to_recv2:" + string_to_recv)
+        }).wait();
+        var javaStringToSend = Java.use('java.lang.String').$new(string_to_recv);
+
+        var result = this.setText(javaStringToSend);
+        return result;
+    }
+})
+```
+
+
+
+```python
+import time
+import frida
+import base64
+
+def my_message_handler(message,payload):
+    print("py-message=",message)
+    print("py-payloadstring_to_recv=",payload)
+    if message["type"]=="send":
+        data = message["payload"].split(":")[1].strip()
+        print('data1:',data)
+        data = str(base64.b64decode(data))
+        print('data2:',data)
+        usr,pw = data.split(":")
+        print('usr:',usr)
+        print('pw:',pw)
+        data = str(base64.b64encode(("admin"+":"+pw).encode()))
+        print("encode data:",data)
+        # 将修改后的数据作为字典形式的消息发送给Frida脚本。
+        script.post({"my_data":data})
+        print("Modified data sent !")
+
+# =================远程连接================
+device = frida.get_device_manager().add_remote_device("10.128.128.193:8888")
+# =================远程连接================
+
+# =================USB连接================
+# device = frida.get_usb_device()
+# =================USB连接================
+
+session = device.attach("com.example.lesson7sec")
+
+
+with open("lesson7sec.js") as f :
+    # 使用session创建一个Frida脚本对象，将读取的JavaScript脚本作为参数传入。
+    script = session.create_script(f.read())
+
+# 将自定义的消息处理函数my_message_handler注册到Frida脚本的"message"事件上，用于处理接收到的消息。
+script.on("message",my_message_handler)
+# 加载Frida脚本
+script.load()
+# 等待用户输入，保持脚本的运行，直到用户手动终止。
+input()
 ```
 

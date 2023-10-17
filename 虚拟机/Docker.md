@@ -888,3 +888,28 @@ docker run -d -p 8081:8080 --user=root --name jenkins_android --restart=always -
 
 
 
+
+
+## 其他问题
+
+1.
+
+```
+Error response from daemon: Ports are not available: exposing port TCP 0.0.0.0:8081 -> 0.0.0.0:0: listen tcp 0.0.0.0:8081: bind: An attempt was made to access a socket in a way forbidden by its access permissions.
+Error: failed to start containers: jenkins_android
+```
+
+
+
+```
+管理员模式执行以下命令
+net stop winnat
+net start winnat
+```
+
+
+
+
+
+
+
