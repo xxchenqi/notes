@@ -388,6 +388,7 @@ cat .objection/objection.log
 附加需要调试的app, 进入交互界面
 # objection -g com.app.name explore
 objection -N -h 192.168.71.96 -p 8888 -g com.android.settings explore
+-N：这个选项表示不要加载 Frida 脚本
 
 列出当前进程所有的activity
 android hooking list activities 
@@ -617,4 +618,89 @@ script.load()
 # 等待用户输入，保持脚本的运行，直到用户手动终止。
 input()
 ```
+
+
+
+## 内网穿透
+
+NPS
+
+https://github.com/ehang-io/nps
+
+FRP
+
+https://github.com/fatedier/frp
+
+
+
+NPS搭建
+
+```
+1.docker pull ffdfgdfg/nps
+2.下载conf文件夹
+3.修改nps.conf文件
+主要修改写端口号(当然可以不改，主要防止和其他端口冲突)
+http_proxy_port=20000
+https_proxy_port=20001
+bridge_port=20002
+web_port = 20003
+4.创建容器
+docker run -d -v D:\docker_data\nps\conf:/conf --name=nps ffdfgdfg/nps
+5.访问主页
+http://localhost:20003/
+admin
+123
+
+6.点击客户端-新增-填写备注就行
+7.点击+,复制客户端命令
+8.去手机执行(提前下载并解压相关文件)
+npc命令
+启动frida
+9.点击tcp隧道-新增
+填写：客户端id、服务端端口、目标 (IP:端口)
+```
+
+
+
+## ZenTracer
+
+用于辅助分析
+
+```
+pyenv install 3.8.0
+git clone https://github.com/hluwa/ZenTracer
+cd ZenTracer
+pyenv local 3.8.0
+python -m pip install --upgrade pip
+pip install PyQt5
+pip install frida-tools
+python ZenTracer.py
+```
+
+使用
+
+```
+adb 连接手机
+启动frdia 默认端口
+Action-Match RegEx  输入匹配
+Action-start 启动hook
+```
+
+
+
+## 加载和打包dex
+
+打包dex
+
+```
+d8 xxx.class
+```
+
+加载dex
+
+```
+Java.openClassFile("/data/local/tmp/xxx.dex").load();
+```
+
+记得加权限 chmod 777
 
