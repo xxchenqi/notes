@@ -157,13 +157,8 @@ frida -U -f pagkageName -l xx.js --no-pause
 通过host启动
 frida -H 192.168.71.96:8888 -f packageName -l x.js 
 
-
 说明：
--f 以附加模式启动该应用程序，并注入JavaScript脚本。
-
-附加模式（attach mode）和普通模式（spawn mode）是两种不同的启动方式，它们有以下区别：
-附加模式适用于已经运行的应用程序，而普通模式适用于尚未运行的应用程序。选择使用哪种模式取决于用户的具体需求和场景。
-
+-f 重新启动程序，如果已经启动了，可以不需要加-f
 "--no-pause" 选项告诉 Frida 在注入代码后不要暂停目标应用程序的执行。
 执行 "%resume" 命令，以恢复目标应用程序的执行。
 
@@ -430,7 +425,7 @@ android hooking watch class android.bluetooth.BluetoothDevice
 hook方法(参数不需要,打印出返回值、参数、堆栈信息)
 android hooking watch class_method android.bluetooth.BluetoothDevice.equals --dump-args --dump-backtrace --dump-return
 
-查看job列表
+查看job列表(watch之后就会出现在job列表里)
 jobs list
 取消任务列表
 jobs kill <id>
@@ -703,4 +698,75 @@ Java.openClassFile("/data/local/tmp/xxx.dex").load();
 ```
 
 记得加权限 chmod 777
+
+
+
+## 其他
+
+Z3是微软研究院的定理证明器
+
+https://github.com/Z3Prover/z3
+
+
+
+native_hook
+
+https://github.com/lasting-yang/frida_hook_libart
+
+
+
+jnitrace
+
+https://github.com/chame1eon/jnitrace
+
+
+
+
+
+```
+查看so函数地址
+memory list exports libc.so --json /root/Desktop/libc.json
+```
+
+```js
+function hook_libc() {
+	var strcmp_addr = Module.findExportByName("libc.so", "strcmp");
+    if (strcmp_addr) {
+        Java.perform(function() {
+            Interceptor.attach(strcmp_addr, {
+                onEnter: function(args) {
+                    var str1 = ptr(args[0]).readCString();
+                    var str2 = ptr(args[0]).readCString();
+                },
+                onLeave:function(retval) {
+                    
+                }
+            })
+        })
+    }
+}
+```
+
+
+
+```js
+function write_reg2(){
+    var fopen_addrs = Module.findExportByName("libc.so", "fopen");
+    var fputs_addrs = Module.findExportByName("libc.so", "fputs");
+    var fclose_addrs = Module.findExportByName("libc.so", "fclose");
+
+	var fopen = new NativeFunction(fopen_addrs, "pointer",["pointer","pointer"]);
+    var fopen = new NativeFunction(fputs_addrs, "int",["pointer","pointer"]);
+    var fopen = new NativeFunction(fclose_addrs, "int",["pointer"]);
+    
+    var filename = Memory.allocUtf8String("/sdcard/req.dat");
+	var file_mode = Memory.allocUtf8String("w+");
+	var file = fopen(filename, file_mode);
+    var contents = Memory.allocUtf8String("xxxxx");
+    var ret = fputs(contents, file);
+    fclose(file);
+}
+```
+
+
 

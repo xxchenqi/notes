@@ -144,6 +144,27 @@ boot镜像需要去各平台下载
 
 
 
+## 刷镜像(补充)
+
+### 【TWRP】使用adb sideload刷OTA镜像
+
+```
+进入TWRP
+adb reboot recovery 
+
+点击高级-点击ADB Sideload-滑动进入Sideload模式
+
+adb devices 查看是否进入
+显示 XXXXXX    sideload
+
+adb sideload xxx.zip
+
+注：windows usb3.0+ 可能不支持sideload。会一直卡在verify
+参考：https://xdaforums.com/t/fix-on-windows-and-getting-errors-using-fastboot-sideload-over-usb-3-0-solution-inside.4547931/
+```
+
+
+
 
 
 ## 常用命令
@@ -223,15 +244,27 @@ fastboot reboot
 
 ## 资源
 
-ADB/Fastboot驱动：
+驱动程序二进制文件下载
+https://developers.google.com/android/drivers?hl=zh-cn
+
+获取 Google USB 驱动程序(win fastboot无法识别设备)
+https://developer.android.com/studio/run/win-usb?hl=zh-cn
+
+ADB/Fastboot驱动：(备份下载地址)
 
 https://cz-jam.lanzouj.com/iZICY02v2k8j
 
-驱动下载
-https://developers.google.com/android/drivers?hl=zh-cn
 
-USB驱动下载(win fastboot无法识别设备)
-https://developer.android.com/studio/run/oem-usb?hl=zh-cn#Win10
+
+出厂映像
+
+https://developers.google.com/android/images?hl=zh-cn
+
+完整OTA映像
+
+https://developers.google.com/android/ota?hl=zh-cn
+
+
 
 
 
@@ -249,3 +282,10 @@ pixle刷机文章
 
 
 https://www.itfanr.cc/2018/10/16/google-pixel-unlock-bl-and-root/
+
+
+
+其他系统镜像:
+
+https://lineageos.org/
+
