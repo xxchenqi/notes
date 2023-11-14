@@ -116,7 +116,7 @@ fastboot boot twrp.img
 
 
 
-### 2.ROOT
+### 2.ROOT(magisk)
 
 方法1：Recovery卡刷
 
@@ -159,8 +159,9 @@ adb devices 查看是否进入
 
 adb sideload xxx.zip
 
-注：windows usb3.0+ 可能不支持sideload。会一直卡在verify
-参考：https://xdaforums.com/t/fix-on-windows-and-getting-errors-using-fastboot-sideload-over-usb-3-0-solution-inside.4547931/
+注：windows 可能不支持sideload。会一直卡在verify，mac上sideload正常使用
+目前未找到问题，更换过usb2.0和3.0都无效，下面这个链接试了也不行，暂时未找到解决办法。
+https://xdaforums.com/t/fix-on-windows-and-getting-errors-using-fastboot-sideload-over-usb-3-0-solution-inside.4547931/
 ```
 
 
