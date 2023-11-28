@@ -144,6 +144,20 @@ https://frida.re/docs/javascript-api/
 
 
 
+#### Frida启动的两种模式以及区别
+
+```
+frida启动有两种方式，分别为Spawn模式和 Attach 模式；
+区别：
+在 Spawn模式下，Frida 直接启动目标进程，然后在该进程中注入 Frida 的 Agent，也就是说，启动既注入；
+在 Attach 模式下，Frida 会依附到已经运行的目标进程上，并在该进程中注入 Agent；
+
+Spawn 模式启动方式：frida -U {package} -l xxx.js
+Attach 模式启动方式：frida -U -l xxx.js -f {package}
+```
+
+
+
 #### 启动
 
 ```

@@ -72,11 +72,31 @@ https://github.com/ElderDrivers/EdXposedManager
 1.TWRP刷magisk
 注:magisk.apk如果打不卡或报错就把zip改成apk重新安装下
 magisk打开提示重新刷magisk就直接在module中在刷magisk.zip
-2.magisk 安装 riyu
-注:riyu版本高于26,EdXposed暂时不支持,所以安装25.4.4
+2.magisk 安装 riru
+注:riru版本高于26,EdXposed暂时不支持,所以安装25.4.4
 3.magisk 安装 EdXposed
 4.adb install 安装 EdXposedManager.apk
 ```
+
+
+
+### LSPosed
+
+Android 8.1 ~ 14
+
+https://github.com/LSPosed/LSPosed
+
+```
+1.TWRP刷magisk(v24+)
+注:magisk.apk如果打不卡或报错就把zip改成apk重新安装下
+magisk打开提示重新刷magisk就直接在module中在刷magisk.zip
+2.magisk 安装 riru(v26.1.7+)
+3.magisk 安装 LSPosed(riru)
+
+注意使用magisk 安装 riru 不是 twrp安装riru
+```
+
+
 
 
 
@@ -791,7 +811,21 @@ public class XposedFdex implements IXposedHookLoadPackage {
 
 原理：通过inlinehook，hook相关函数(有dex的起始地址和size的函数)，获取到dex的begin和size，然后dump。
 
+此方法6.0测试没问题
+
 ```c++
+#include <jni.h>
+#include <string>
+#include <android/log.h>
+#include <dlfcn.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdlib.h>
+
+extern "C" {
+#include "include/inlineHook.h"
+}
+
 struct DexFile{
     void* vfn;
     void* dexfilebegin;
@@ -1383,6 +1417,12 @@ void *handle = dlopen("/data/app/com.kanxue.test2-kHmupHW2cTdpH9WuZHNENA==/lib/a
 导出函数可以直接通过dlopen+dlsym调用相关函数。
 未导出函数需要通过IDA或者Frida找到so的地址+函数的偏移地址，才能调用。32位的thumb指令集，地址是奇数，所以偏移地址要+1,64位不需要(这个解释暂不太确定)
 ```
+
+
+
+#### 爆破
+
+在暴力破解写多层嵌套循环打日志时，部分日志可能丢失是正常现象，代码还是正常会执行的。
 
 
 

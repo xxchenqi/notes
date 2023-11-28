@@ -290,3 +290,10 @@ https://www.itfanr.cc/2018/10/16/google-pixel-unlock-bl-and-root/
 
 https://lineageos.org/
 
+
+
+## 其他注意事项
+
+刷机成功后一直卡在logo界面loading
+
+进入recovery页面，长按power off键，然后按一下声音+键，重新进入recovery页面，选中清除数据(Wipe data)，然后重启手机

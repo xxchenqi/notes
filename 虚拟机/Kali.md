@@ -39,3 +39,12 @@ socks5 10.128.167.171 7890
 会话层 通过浏览器配置代理测试
 ```
 
+
+
+## ssh
+
+```
+service ssh start
+service ssh status
+```
+
