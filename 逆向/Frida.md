@@ -136,6 +136,14 @@ frida -H 192.168.71.96:8888 -f com.android.settings -l x.js --no-pause
 
 
 
+**代码提示:**
+
+```
+npm install --save @types/frida-gum
+```
+
+
+
 ## Frida基础使用
 
 #### 参考链接
@@ -176,6 +184,41 @@ frida -H 192.168.71.96:8888 -f packageName -l x.js
 "--no-pause" 选项告诉 Frida 在注入代码后不要暂停目标应用程序的执行。
 执行 "%resume" 命令，以恢复目标应用程序的执行。
 
+```
+
+#### 常用选项
+
+```
+--version             显示程序版本号
+-h, --help            显示帮助信息
+-D ID, --device=ID    连接到具有给定ID的设备
+-U, --usb             连接到USB设备
+-R, --remote          连接到远程frida-server
+-H HOST, --host=HOST  连接到HOST上的远程frida-server
+-f FILE, --file=FILE  生成FILE
+-F, --attach-frontmost
+                      附加到前台应用程序
+-n NAME, --attach-name=NAME
+                      附加到NAME
+-p PID, --attach-pid=PID
+                      附加到PID
+--stdio=inherit|pipe  生成时的stdio行为（默认为“inherit”）
+--runtime=duk|v8      使用的脚本运行时（默认为“duk”）
+--debug               启用与Node.js兼容的脚本调试器
+-l SCRIPT, --load=SCRIPT
+                      加载SCRIPT
+-P PARAMETERS_JSON, --parameters=PARAMETERS_JSON
+                      作为JSON的参数，与Gadget相同
+-C CMODULE, --cmodule=CMODULE
+                      加载CMODULE
+-c CODESHARE_URI, --codeshare=CODESHARE_URI
+                      加载CODESHARE_URI
+-e CODE, --eval=CODE  评估CODE
+-q                    安静模式（没有提示）并在-l和-e之后退出
+--no-pause            在启动后自动启动主线程
+-o LOGFILE, --output=LOGFILE
+                      输出到日志文件
+--exit-on-error       在SCRIPT中遇到任何异常后以代码1退出
 ```
 
 
@@ -330,10 +373,6 @@ Java.enumerateLoadedClasses({
 
 
 
-
-
-
-
 #### 例子
 
 ```js
@@ -380,6 +419,279 @@ setImmediate(main)
 
 // 延迟执行 invoke函数
 setTimeout(invoke, 3000)
+```
+
+
+
+### native hook
+
+http://demangler.com/
+
+#### 查找指定模块
+
+```js
+var module = Process.findModuleByName("libart.so")
+```
+
+```js
+var module = Process.findModuleByAddress(addr)
+```
+
+
+
+#### 枚举符号
+
+```js
+// 返回对象数组
+var symbols = Module.enumerateSymbols()
+```
+
+#### 查找指定模块地址
+
+```js
+var native_lib_addr = Module.findBaseAddress("libnative-lib.so");
+```
+
+#### 获取模块中特定导出的地址
+
+```js
+var add_addr = Module.findExportByName("libnative-lib.so", "_Z5r0addii");
+```
+
+#### 函数hook
+
+```js
+Interceptor.attach(add_addr, {
+    // args 是一个数组，包含了目标函数的参数。可以通过修改这个数组来改变目标函数的参数值。
+    onEnter: function (args) {
+        // 调用前执行的逻辑
+        
+        // 修改第一个参数的值
+        args[0] = newValue;
+    },
+    // retval 是目标函数的返回值。可以通过修改这个值来改变目标函数的返回结果。这对于在函数调用后修改返回值很有用。
+    onLeave: function (retval) {
+        // 调用后执行的逻辑
+        
+        // 修改返回值
+        retval.replace(newValue);
+    }
+});
+```
+
+#### 函数构建
+
+```js
+var NewStringUTF = new NativeFunction(NewStringUTF_addr,"pointer",["pointer","pointer"])
+```
+
+#### 函数替换
+
+```js
+Interceptor.replace(NewStringUTF_addr, new NativeCallback(function(parg1,parg2){
+    var newPARG2 = Memory.allocUtf8String("newPARG2")
+    var result = NewStringUTF(parg1,newPARG2);
+    return result;
+},"pointer", ["pointer","pointer"]))
+```
+
+
+
+#### 主动调用
+
+```js
+// NativeFunction(address, returnType, argumentTypes, abi);
+var add = new NativeFunction(add_addr,"int",["int","int"]);
+var add_result = add(1,2);
+```
+
+
+
+#### JNI调用案例
+
+```js
+function hook_nativelib(){
+    var myfirstjniJNI = Module.findExportByName("libnative-lib.so", "Java_com_example_demoso1_MainActivity_myfirstjniJNI");
+    var myfirstjniJNI_invoke = new NativeFunction(myfirstjniJNI,"pointer",["pointer","pointer","pointer"])
+
+    Interceptor.attach(myfirstjniJNI, {
+        onEnter:function(args){
+            var invoke_result_addr = myfirstjniJNI_invoke(args[0],args[1],args[2])
+            // jstring读取
+            Java.vm.getEnv().getStringUtfChars(invoke_result_addr,null).readCString()
+        },onLeave:function(retval){
+        }
+    })
+}
+```
+
+#### char*、jstring读取
+
+```js
+// char * 
+xxx.readCString();
+
+// jstring
+Java.vm.getEnv().getStringUtfChars(jStringAddr,null).readCString()
+```
+
+#### 调用栈打印
+
+```js
+console.log('CCCryptorCreate called from:\n' + Thread.backtrace(this.context, Backtracer.ACCURATE)
+        .map(DebugSymbol.fromAddress).join('\n') + '\n')
+```
+
+#### 打印所有so和函数
+
+```js
+function EnumerateAllExports(){
+    var modules = Process.enumerateModules();
+    //console.log("Process.enumerateModules => ",JSON.stringify(modules))
+    for(var i=0;i<modules.length;i++){
+        var module = modules[i];
+        var module_name = modules[i].name;
+        var exports = module.enumerateExports();
+        console.log("module_name=>",module_name,"  module.enumerateExports = > ",JSON.stringify(exports))
+    }
+}
+```
+
+
+
+#### 动态注册hook案例
+
+函数签名
+
+```c
+jint RegisterNatives(JNIEnv *env, jclass clazz, const JNINativeMethod *methods, jint nMethods);
+
+typedef struct {
+    const char *name; // 本地方法的名称
+    const char *signature; // 本地方法的签名
+    void *fnPtr; // 指向本地方法实现的函数指针
+} JNINativeMethod;
+```
+
+
+
+```js
+function hook_RegisterNatives(){
+    var RegisterNatives_addr = null;
+    var symbols = Process.findModuleByName("libart.so").enumerateSymbols()
+    for(var i = 0;i<symbols.length;i++){
+        var symbol = symbols[i].name;
+        if((symbol.indexOf("CheckJNI")==-1)&&(symbol.indexOf("JNI")>=0)){
+            if(symbol.indexOf("RegisterNatives")>=0){
+                console.log("finally found RegisterNatives_name :",symbol);
+                RegisterNatives_addr =symbols[i].address ;
+                console.log("finally found RegisterNatives_addr :",RegisterNatives_addr);
+            }
+        }
+    }
+
+    if(RegisterNatives_addr!=null){
+        Interceptor.attach(RegisterNatives_addr,{
+            onEnter:function(args){
+                console.log("[RegisterNatives]method counts :",args[3]);
+                var env = args[0];
+                var jclass = args[1];
+                var class_name = Java.vm.tryGetEnv().getClassName(jclass);
+                var methods_ptr = ptr(args[2]);
+                var method_count = parseInt(args[3]);
+                for (var i = 0; i < method_count; i++) {
+                    var name_ptr = Memory.readPointer(methods_ptr.add(i * Process.pointerSize * 3));
+                    var sig_ptr = Memory.readPointer(methods_ptr.add(i * Process.pointerSize * 3 + Process.pointerSize));
+                    var fnPtr_ptr = Memory.readPointer(methods_ptr.add(i * Process.pointerSize * 3 + Process.pointerSize * 2));
+                    var name = Memory.readCString(name_ptr);
+                    var sig = Memory.readCString(sig_ptr);
+                    var find_module = Process.findModuleByAddress(fnPtr_ptr);
+                    console.log("[RegisterNatives] java_class:", class_name, "name:", name, "sig:", sig, "fnPtr:", fnPtr_ptr, "module_name:", find_module.name, "module_base:", find_module.base, "offset:", ptr(fnPtr_ptr).sub(find_module.base));
+                }
+            },onLeave:function(retval){
+            }
+        })
+
+    }else{
+        console.log("didn`t found RegisterNatives address")
+    }
+}
+```
+
+
+
+#### pthread hook
+
+```c
+int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
+```
+
+```js
+function hook_pthread(){
+    var pthread_create_addr = Module.findExportByName("libc.so", "pthread_create");
+
+    Interceptor.attach(pthread_create_addr,{
+        onEnter:function(args) {
+            console.log("args=>",args[0],args[1],args[2],args[4])
+           
+            // 函数替换
+            var libnativebaseaddress = Module.findBaseAddress("libnative-lib.so")
+            if (libnativebaseaddress != null) {
+                // 确定参数在so中的地址(如果不判断会替换掉其他的pthread)
+                if(args[2]-libnativebaseaddress == 64900){
+            		var time_addr = Module.findExportByName("libc.so", "time");
+                    args[2]=time_addr;
+                }
+            }
+        },onLeave:function(retval){
+            console.log("retval is =>",retval)
+        }
+    })
+}
+```
+
+#### 文件操作案例
+
+```js
+function writeSomething(path,contents){
+    var fopen_addr = Module.findExportByName("libc.so", "fopen");
+    var fputs_addr = Module.findExportByName("libc.so", "fputs");
+    var fclose_addr = Module.findExportByName("libc.so", "fclose");
+
+    var fopen = new NativeFunction(fopen_addr,"pointer",["pointer","pointer"])
+    var fputs = new NativeFunction(fputs_addr,"int",["pointer","pointer"])
+    var fclose = new NativeFunction(fclose_addr,"int",["pointer"])
+
+    console.log(path,contents)
+
+    var fileName = Memory.allocUtf8String(path);
+    var mode = Memory.allocUtf8String("a+");
+	
+    var fp = fopen(fileName,mode);
+
+    var contentHello = Memory.allocUtf8String(contents);
+    // 注意权限
+    var ret = fputs(contentHello,fp)
+    
+    fclose(fp);
+}
+```
+
+#### 函数导出到文件
+
+```js
+function EnumerateAllExports(){
+    var modules = Process.enumerateModules();
+    for(var i=0;i<modules.length;i++){
+        var module = modules[i];
+        var module_name = modules[i].name;
+        var exports = module.enumerateSymbols();
+        console.log("module_name=>",module_name,"  module.enumerateExports = > ",JSON.stringify(exports))
+        for(var m =0; m<exports.length;m++){
+            writeSomething("/sdcard/settings/"+module_name+".txt", "type:"+exports[m].type+ " name:"+ exports[m].name+" address:"+exports[m].address+"\n")
+        }        
+    }
+}
 ```
 
 
@@ -447,7 +759,57 @@ jobs kill <id>
 
 启动时hook方法
 objection -d -g <packageName> explore --startup-command 'android hooking watch class_method <methodName> --dump-args --dump-backtrace --dump-return'
+
+
+关闭sslpinning(也可以在启动objection时候加 -s ...)
+android sslpinning disable
+
+
+设置返回值
+android hooking set return_value ...(类名.方法名) ...(value)
 ```
+
+### 常用选项
+
+1. **`-g`（`--gadget`）：**
+   - **含义：** 指定要使用的 Gadget，用于执行 Frida 操作。
+   - **用法：** `objection -g <Gadget名称>`
+
+2. **`-h`（`--help`）：**
+   - **含义：** 显示帮助信息，列出可用的命令和选项。
+
+3. **`-a`（`--attach`）：**
+   - **含义：** 指定要附加到的目标应用程序的进程标识符（PID）。
+   - **用法：** `objection -a <PID>`
+
+4. **`-b`（`--binary`）：**
+   - **含义：** 指定要启动并附加到的二进制文件。
+   - **用法：** `objection -b <二进制文件路径>`
+
+5. **`-l`（`--load`）：**
+   - **含义：** 在启动应用程序后加载指定的 Frida 脚本。
+   - **用法：** `objection -l <脚本文件路径>`
+
+6. **`-c`（`--config`）：**
+   - **含义：** 指定配置文件的路径。
+   - **用法：** `objection -c <配置文件路径>`
+
+7. **`-p`（`--password`）：**
+   - **含义：** 指定设备的密码（iOS）或解锁密码（Android）。
+   - **用法：** `objection -p <密码>`
+
+8. **`-s`（`--script`）：**
+   - **含义：** 指定要执行的 Objection 脚本。
+   - **用法：** `objection -s <脚本名称>`
+
+9. **`-i`（`--insecure`）：**
+   - **含义：** 在启动 Frida 时禁用 SSL 校验。
+   - **用法：** `objection -i`
+
+10. **`-q`（`--quiet`）：**
+    - **含义：** 禁用详细输出，以静默模式运行。
+
+
 
 
 
@@ -471,8 +833,6 @@ plugin load /root/.objection/plugins/Wallbreaker
 打印类的信息(变量、方法)
 plugin wallbreaker classdump --fullname android.bluetooth.BluetoothDevice
 ```
-
-
 
 
 

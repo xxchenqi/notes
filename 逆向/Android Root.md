@@ -88,6 +88,18 @@ bootloader 引导加载器(类似BIOS)
 
 ### 2.刷第三方Recovery(TWRP)
 
+#### 查看是否是AB分区
+
+```shell
+getprop | grep treble
+或者
+getprop ro.build.ab_update
+
+没有输出就是非AB分区
+```
+
+
+
 #### 非A/B分区
 
 进入fastboot,执行刷写命令
@@ -264,6 +276,13 @@ https://developers.google.com/android/images?hl=zh-cn
 完整OTA映像
 
 https://developers.google.com/android/ota?hl=zh-cn
+
+
+
+```
+下载镜像后可以直接执行
+flash-all.bat
+```
 
 
 

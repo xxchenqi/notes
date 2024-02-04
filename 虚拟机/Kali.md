@@ -48,3 +48,16 @@ service ssh start
 service ssh status
 ```
 
+
+
+
+
+## 文件拖到虚拟机生成缓存目录
+
+```
+/root/.cache/vmware
+
+du -h *
+```
+
+可以用xftp软件传输
