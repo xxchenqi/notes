@@ -581,7 +581,7 @@ Result：当前指令执行后，被修改的寄存器列表及对应的值
 删除无关指令后，只剩下真实的指令，反混淆成功
 ```
 
-### Fork 双进程调试法
+### Fork 双进程调试法（TODO）
 
 ```
 将子进程的第一条指令 patch 为死循环
@@ -602,6 +602,163 @@ Frida -> spawn -> 附加 -> Frida %resume
 
 
 
+
+## IDA疑难杂症（TODO）
+
+### IDA Decompile as call
+
+```
+将一条特殊指令标记为 call 指令。
+示例：逆向重建后的代码， 其 syscall 与标准的 Linux syscall 有区别，导致 IDA 对其进行优化产生错误的代码。
+
+ida 直接将某一条指令强行解释为函数调用  操作方法：
+1.选中 syscall 指令
+2.菜单: Edit -> Other -> Decompile as call输入定义
+```
+
+### IDA 修复枚举值
+
+TODO
+
+### IDA positive sp value
+
+```
+函数栈不平衡，这个时候就应该去检查函数中对栈操作的指令，并判断是否平衡  首先看函数头部与函数尾部是否平衡
+
+解决方法是将 nop 掉即可
+```
+
+### IDA too big stack frame
+
+```
+跟栈不平衡原理差不多，IDA 里面的选项可以显示 Stack Pointer
+
+最左侧的是stack pointer偏移量，发现异常干扰指令，nop这个干扰指令就可以反编译成功。
+```
+
+### IDA 跳转表修复
+
+```
+Edit -> Other -> Specify Switch.. 打开配置窗口
+```
+
+### 函数大小限制处理
+
+```
+IDA 反编译函数有大小限制，超过最大长度将报错
+cfg/hexrays.cfg 配置文件可以修改最大反编译函数大小配置项
+配置项：MAX_FUNCSIZE，默认 64
+```
+
+
+
+##  IDA脚本编程
+
+### vscode 智能提示
+
+```
+在环境变量里添加 PYTHONPATH 值为 ida7.7\python\3 完整路径
+```
+
+### 常用命令
+
+```
+寄存器操作
+idc.get_reg_value('rax’)
+idaapi.set_reg_val("rax", 1234)
+
+读取 xmm 寄存器
+def read_xmm_reg(name):
+	rv = idaapi.regval_t()
+	idaapi.get_reg_val(name,rv)
+	return (struct.unpack('Q', rv.bytes())[0])
+
+调试内存操作
+idc.read_dbg_byte(addr)
+idc.read_dbg_memory(addr, size)
+idc.read_dbg_dword(addr)
+idc.read_dbg_qword(addr)
+idc.patch_dbg_byte(addr, val)
+
+调试内存读写封装
+def patch_dbg_mem(addr, data):
+	for i in range(len(data)):
+		idc.patch_dbg_byte(addr +i, data[i])
+
+def read_dbg_mem(addr, size):
+	dd = []
+	for i in range(size):
+		dd.append(idc.read_dbg_byte(addr + i))
+	return bytes(dd)
+	
+	
+
+
+本地内存操作（会修改idb数据库）
+idc.get_qword(addr)
+idc.patch_qword(addr, val)
+idc.patch_dword(addr, val)
+idc.patch_word(addr, val)
+idc.patch_byte(addr, val)
+idc.get_db_byte(addr)
+idc.get_bytes(addr, size)
+
+反汇编操作
+GetDisasm(addr)  # 获取反汇编文本
+idc.next_head(ea) # 获取下一条指令地址
+
+交叉引用分析
+def ref in idautils.XrefTo(ea):
+	print(hex(ref.frm))
+
+
+
+o-llvm批量断点设置
+fn = 0x401F60
+
+
+
+
+
+杂项常用接口
+idc.add_bpt(0x409437) 添加断点
+idaapi.get_imagebase() 获取基地址
+idc.create_insn(addr) # c, Make Code
+ida_funcs.add_func(addr) # p , create function
+ida_bytes.create_strlit(addr) # 创建字符串，A 键效果
+
+函数遍历
+
+
+基本块遍历
+
+
+基本块的前驱
+
+
+基本块的后继
+
+指令遍历
+
+
+
+条件断点脚本编写
+
+
+```
+
+
+
+
+
+
+
+
+
+### Microcode
+
+```
+```
 
 
 
