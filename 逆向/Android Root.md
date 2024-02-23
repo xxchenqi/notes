@@ -316,3 +316,18 @@ https://lineageos.org/
 刷机成功后一直卡在logo界面loading
 
 进入recovery页面，长按power off键，然后按一下声音+键，重新进入recovery页面，选中清除数据(Wipe data)，然后重启手机
+
+
+
+“已连接，但无法访问互联网“开机后wifi有感叹号,时间无法同步解决办法
+在手机的shell里以root用户执行:
+
+```shell
+settings put global captive_portal_http_url https://www.google.cn/generate
+settings put global captive_portal_https_url https://www.google.cn/generate_204
+settings put global ntp_server 1.hk.pool.ntp.org
+reboot
+```
+
+
+

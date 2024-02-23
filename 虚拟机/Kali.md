@@ -61,3 +61,13 @@ du -h *
 ```
 
 可以用xftp软件传输
+
+
+
+## 其他常用命令
+
+```
+grep -ril "xxxActivity" *
+tree -NCfhl | grep xxx
+```
+

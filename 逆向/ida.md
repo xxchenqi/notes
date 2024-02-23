@@ -393,8 +393,8 @@ TIPS 【模块窗口】【导出函数窗口】都是表格窗口，用 Ctrl + F
 ```
 快捷键 F2 设置软件断点
 
-步过(F7):执行一条指令(反汇编窗口) / 执行一行语句(伪代码)，不进入函数调用
-步入(F8):执行一条指令(反汇编窗口) / 执行一行语句(伪代码)，进入函数调用
+步过(F8):执行一条指令(反汇编窗口) / 执行一行语句(伪代码)，不进入函数调用
+步入(F7):执行一条指令(反汇编窗口) / 执行一行语句(伪代码)，进入函数调用
 执行到返回(Ctrl+F7): 执行到当前函数的返回后位置(步入了xx函数，快速步出的方法)
 执行到光标(F4): 执行到光标位置停下来（适用于跳出循环等操作…）
 运行直到断点(F9): 运行
@@ -581,7 +581,7 @@ Result：当前指令执行后，被修改的寄存器列表及对应的值
 删除无关指令后，只剩下真实的指令，反混淆成功
 ```
 
-### Fork 双进程调试法（TODO）
+### Fork 双进程调试法
 
 ```
 将子进程的第一条指令 patch 为死循环
@@ -690,9 +690,6 @@ def read_dbg_mem(addr, size):
 	for i in range(size):
 		dd.append(idc.read_dbg_byte(addr + i))
 	return bytes(dd)
-	
-	
-
 
 本地内存操作（会修改idb数据库）
 idc.get_qword(addr)
@@ -712,12 +709,15 @@ def ref in idautils.XrefTo(ea):
 	print(hex(ref.frm))
 
 
-
 o-llvm批量断点设置
 fn = 0x401F60
-
-
-
+ollvm_tail = 0x405D4B
+f_blocks = idaapi.FlowChart(idaapi.get_func(fn), flags=idaapi.FC_PREDS)
+for block in f_blocks:
+    for succ in block.succs():
+        if succ.start_ea == ollvm_tail:
+            print(hex(block.start_ea))
+            idc.add_bpt(block.start_ea)
 
 
 杂项常用接口
@@ -728,26 +728,38 @@ ida_funcs.add_func(addr) # p , create function
 ida_bytes.create_strlit(addr) # 创建字符串，A 键效果
 
 函数遍历
-
+for func in idautils.Functions():
+    print("0x%x, %s" % (func, idc.get_func_name(func)))
 
 基本块遍历
-
+fn = 目标哈数地址
+f_blocks = idaapi.FlowChart(idaapi.get_func(fn), flags=idaapi.FC_PREDS)
+for block in f_blocks:
+    print hex(block.start_ea)
 
 基本块的前驱
-
+for pred in block.preds():
+    print hex(pred.start_ea)
 
 基本块的后继
+for succ in block.succs():
+    print hex(pred.start_ea)
 
 指令遍历
-
-
-
-条件断点脚本编写
-
+for ins in idautils.FuncTims(0x401000):
+    print(hex(ins))
 
 ```
 
+### 条件断点脚本编写
 
+```
+编写断点函数脚本，并在 IDA 底部输出窗口导入该函数
+设置普通断点，在 call 之后设置
+[右键] -> [Edit Break …]
+点击 [Condition] -> […]
+输入 方法() ，并选择语言为 Python
+```
 
 
 
@@ -758,6 +770,7 @@ ida_bytes.create_strlit(addr) # 创建字符串，A 键效果
 ### Microcode
 
 ```
+TODO
 ```
 
 

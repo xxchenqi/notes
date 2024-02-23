@@ -146,13 +146,13 @@ npm install --save @types/frida-gum
 
 ## Frida基础使用
 
-#### 参考链接
+### 参考链接
 
 https://frida.re/docs/javascript-api/
 
 
 
-#### Frida启动的两种模式以及区别
+### Frida启动的两种模式以及区别
 
 ```
 frida启动有两种方式，分别为Spawn模式和 Attach 模式；
@@ -166,7 +166,7 @@ Attach 模式启动方式：frida -U -l xxx.js -f {package}
 
 
 
-#### 启动
+### 启动
 
 ```
 通过USB启动
@@ -186,7 +186,7 @@ frida -H 192.168.71.96:8888 -f packageName -l x.js
 
 ```
 
-#### 常用选项
+### 常用选项
 
 ```
 --version             显示程序版本号
@@ -223,13 +223,13 @@ frida -H 192.168.71.96:8888 -f packageName -l x.js
 
 
 
-#### 在Java层面执行代码
+### 在Java层面执行代码
 
 ```js
 Java.perform(function(){...})
 ```
 
-#### 方法hook
+### 方法hook
 
 ```js
 Java.use("packageName.className").methodName.implementation = function(arg1) {
@@ -240,19 +240,19 @@ Java.use("packageName.className").methodName.implementation = function(arg1) {
 }
 ```
 
-#### 方法重载
+### 方法重载
 
 ```js
 Java.use("packageName.className").methodName.overload('java.lang.String', 'int').implementation = function(arg1, arg2) {}
 ```
 
-#### 创建String实例
+### 创建String实例
 
 ```js
 var strInstance = Java.use('java.lang.String').$new("test");
 ```
 
-#### 寻找实例
+### 寻找实例
 
 ```js
 Java.choose("packageName.className", {
@@ -264,13 +264,13 @@ Java.choose("packageName.className", {
 })
 ```
 
-#### 调用静态方法
+### 调用静态方法
 
 ```js
 var result = Java.use("packageName.className").staticMethodName();
 ```
 
-#### 执行
+### 执行
 
 ```js
 // 立即执行 main函数
@@ -280,31 +280,31 @@ setImmediate(main)
 setTimeout(invoke, 3000)
 ```
 
-#### 堆栈信息打印
+### 堆栈信息打印
 
 ```js
 console.log(Java.use("android.util.Log").getStackTraceString(Java.use("java.lang.Throwable".$new())));
 ```
 
-#### 数组打印 或 [object]打印
+### 数组打印 或 [object]打印
 
 ```js
 console.log(JSON.stringify(arg));
 ```
 
-#### 构造数组
+### 构造数组
 
 ```js
 var charArray = Java.array('char', ['a', 'b', 'c']);
 ```
 
-#### 类型转换
+### 类型转换
 
 ```js
 var testInstance = Java.cast(instance, Java.use("packageName.className"));
 ```
 
-#### 创建java类
+### 创建java类
 
 ```js
 var testClass = Java.registerClass({
@@ -319,13 +319,13 @@ var testClass = Java.registerClass({
 testClass.$new().methodName();
 ```
 
-#### 相同函数和字段名称通过下划线区分
+### 相同函数和字段名称通过下划线区分
 
 ```
 instance._same_name_bool_var.value = true ;
 ```
 
-#### 反射修改函数
+### 反射修改函数
 
 ```js
 Java.perform(function(){
@@ -342,7 +342,7 @@ Java.perform(function(){
 })
 ```
 
-#### 枚举 Java VM 中存在的类加载器
+### 枚举 Java VM 中存在的类加载器
 
 ```js
 Java.enumerateClassLoaders({
@@ -359,7 +359,7 @@ Java.enumerateClassLoaders({
 })
 ```
 
-#### 枚举加载的类
+### 枚举加载的类
 
 ```js
 Java.enumerateLoadedClasses({
@@ -373,61 +373,11 @@ Java.enumerateLoadedClasses({
 
 
 
-#### 例子
-
-```js
-function main(){
-    Java.perform(function(){
-        console.log("Inside Frida Java Perform !")
-        // hook
-        // overload 重载
-        // Java.use("com.cq.test.MainActivity").test.overload('java.lang.String', 'int').implementation
-        Java.use("com.cq.test.MainActivity").test.implementation = function(arg1, arg2) {
-            // 创建String实例
-            //Java.use('java.lang.String').$new("test");
-			// 主动调用test方法
-            var result = this.test(arg1, arg2);
-            // 打印堆栈信息
-            console.log(Java.use("android.util.Log").getStackTraceString(Java.use("java.lang.Throwable".$new())));
-            console.log("arg1,arg2,result", arg1, arg2, result);
-            return result;
-        }
-
-        // 寻找MainActivity实例
-        Java.choose("com.cq.test.MainActivity", {
-            onMatch:function(instance) {
-                console.log(instance);
-                // 通过实例调用方法
-                instance.test(10, 10);
-            }, onComplete:function(){}
-        })
-
-        // 调用静态方法
-        var result = Java.use("com.cq.test.MainActivity").staticTest();
-
-    })
-}
-
-function invoke(){
-    Java.perform(function(){
-        //...
-    })
-}
-
-// 立即执行 main函数
-setImmediate(main)
-
-// 延迟执行 invoke函数
-setTimeout(invoke, 3000)
-```
-
-
-
-### native hook
+## native hook
 
 http://demangler.com/
 
-#### 查找指定模块
+### 查找指定模块
 
 ```js
 var module = Process.findModuleByName("libart.so")
@@ -439,26 +389,26 @@ var module = Process.findModuleByAddress(addr)
 
 
 
-#### 枚举符号
+### 枚举符号
 
 ```js
 // 返回对象数组
 var symbols = Module.enumerateSymbols()
 ```
 
-#### 查找指定模块地址
+### 查找指定模块地址
 
 ```js
 var native_lib_addr = Module.findBaseAddress("libnative-lib.so");
 ```
 
-#### 获取模块中特定导出的地址
+### 获取模块中特定导出的地址
 
 ```js
 var add_addr = Module.findExportByName("libnative-lib.so", "_Z5r0addii");
 ```
 
-#### 函数hook
+### 函数hook
 
 ```js
 Interceptor.attach(add_addr, {
@@ -479,13 +429,13 @@ Interceptor.attach(add_addr, {
 });
 ```
 
-#### 函数构建
+### 函数构建
 
 ```js
 var NewStringUTF = new NativeFunction(NewStringUTF_addr,"pointer",["pointer","pointer"])
 ```
 
-#### 函数替换
+### 函数替换
 
 ```js
 Interceptor.replace(NewStringUTF_addr, new NativeCallback(function(parg1,parg2){
@@ -497,7 +447,7 @@ Interceptor.replace(NewStringUTF_addr, new NativeCallback(function(parg1,parg2){
 
 
 
-#### 主动调用
+### 主动调用
 
 ```js
 // NativeFunction(address, returnType, argumentTypes, abi);
@@ -507,7 +457,7 @@ var add_result = add(1,2);
 
 
 
-#### JNI调用案例
+### JNI调用案例
 
 ```js
 function hook_nativelib(){
@@ -525,7 +475,7 @@ function hook_nativelib(){
 }
 ```
 
-#### char*、jstring读取
+### char*、jstring读取
 
 ```js
 // char * 
@@ -535,14 +485,14 @@ xxx.readCString();
 Java.vm.getEnv().getStringUtfChars(jStringAddr,null).readCString()
 ```
 
-#### 调用栈打印
+### 调用栈打印
 
 ```js
 console.log('CCCryptorCreate called from:\n' + Thread.backtrace(this.context, Backtracer.ACCURATE)
         .map(DebugSymbol.fromAddress).join('\n') + '\n')
 ```
 
-#### 打印所有so和函数
+### 打印所有so和函数
 
 ```js
 function EnumerateAllExports(){
@@ -559,7 +509,7 @@ function EnumerateAllExports(){
 
 
 
-#### 动态注册hook案例
+### 动态注册hook案例
 
 函数签名
 
@@ -620,7 +570,7 @@ function hook_RegisterNatives(){
 
 
 
-#### pthread hook
+### pthread hook
 
 ```c
 int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
@@ -650,7 +600,7 @@ function hook_pthread(){
 }
 ```
 
-#### 文件操作案例
+### 文件操作案例
 
 ```js
 function writeSomething(path,contents){
@@ -677,7 +627,7 @@ function writeSomething(path,contents){
 }
 ```
 
-#### 函数导出到文件
+### 函数导出到文件
 
 ```js
 function EnumerateAllExports(){
@@ -693,6 +643,329 @@ function EnumerateAllExports(){
     }
 }
 ```
+
+
+
+
+
+## 示例
+
+### 综合示例(java)
+
+```js
+function main(){
+    Java.perform(function(){
+        console.log("Inside Frida Java Perform !")
+        // hook
+        // overload 重载
+        // Java.use("com.cq.test.MainActivity").test.overload('java.lang.String', 'int').implementation
+        Java.use("com.cq.test.MainActivity").test.implementation = function(arg1, arg2) {
+            // 创建String实例
+            //Java.use('java.lang.String').$new("test");
+			// 主动调用test方法
+            var result = this.test(arg1, arg2);
+            // 打印堆栈信息
+            console.log(Java.use("android.util.Log").getStackTraceString(Java.use("java.lang.Throwable".$new())));
+            console.log("arg1,arg2,result", arg1, arg2, result);
+            return result;
+        }
+
+        // 寻找MainActivity实例
+        Java.choose("com.cq.test.MainActivity", {
+            onMatch:function(instance) {
+                console.log(instance);
+                // 通过实例调用方法
+                instance.test(10, 10);
+            }, onComplete:function(){}
+        })
+
+        // 调用静态方法
+        var result = Java.use("com.cq.test.MainActivity").staticTest();
+
+    })
+}
+
+function invoke(){
+    Java.perform(function(){
+        //...
+    })
+}
+
+// 立即执行 main函数
+setImmediate(main)
+
+// 延迟执行 invoke函数
+setTimeout(invoke, 3000)
+```
+
+### 打印堆栈
+
+```js
+console.log(Java.use("android.util.Log").getStackTraceString(Java.use("java.lang.Throwable".$new())));
+```
+
+```js
+function LogPrint(log) {
+    var theDate = new Date();
+    var hour = theDate.getHours();
+    var minute = theDate.getMinutes();
+    var second = theDate.getSeconds();
+    var mSecond = theDate.getMilliseconds();
+
+    hour < 10 ? hour = "0" + hour : hour;
+    minute < 10 ? minute = "0" + minute : minute;
+    second < 10 ? second = "0" + second : second;
+    mSecond < 10 ? mSecond = "00" + mSecond : mSecond < 100 ? mSecond = "0" + mSecond : mSecond;
+    var time = hour + ":" + minute + ":" + second + ":" + mSecond;
+    var threadid = Process.getCurrentThreadId();
+    console.log("[" + time + "]" + "->threadid:" + threadid + "--" + log);
+}
+
+function printJavaStack(name) {
+    Java.perform(function () {
+        var Exception = Java.use("java.lang.Exception");
+        var ins = Exception.$new("Exception");
+        var straces = ins.getStackTrace();
+        if (straces != undefined && straces != null) {
+            var strace = straces.toString();
+            var replaceStr = strace.replace(/,/g, " \n ");
+            LogPrint("=============================" + name + " Stack strat=======================");
+            LogPrint(replaceStr);
+            LogPrint("=============================" + name + " Stack end======================= \n ");
+            Exception.$dispose();
+        }
+    });
+}
+```
+
+
+
+### 打印native堆栈
+
+```js
+function printNativeStack(context, name) {
+    var array = Thread.backtrace(context, Backtracer.ACCURATE);
+    // 只回溯一层
+    var first = DebugSymbol.fromAddress(array[0]);
+    // 通过此判断,避免java和native多次打印
+    if (first.toString().indexOf('libopenjdk.so!NET_Send') < 0) {
+        var trace = Thread.backtrace(context, Backtracer.ACCURATE).map(DebugSymbol.fromAddress).join("\n");
+        LogPrint("-----------start:" + name + "--------------");
+        LogPrint(trace);
+        LogPrint("-----------end:" + name + "--------------");
+    }
+}
+```
+
+
+
+### 获取线程id
+
+```js
+var threadid = Process.getCurrentThreadId();
+```
+
+
+
+### dumpDex/脱壳
+
+```js
+//只适用于存在getDex和getBytes api的android版本
+function dumpdex() {
+    Java.perform(function () {
+        var File = Java.use('java.io.File');
+        var FileOutputStream = Java.use('java.io.FileOutputStream');
+        Java.enumerateClassLoadersSync().forEach(function (loader) {
+            console.log(loader + "\n");
+            try {
+                var aclass = loader.loadClass("a.a.a.a$a")
+                var dexobj = aclass.getDex();
+                var dexbytes = dexobj.getBytes();
+                var dexsavepath = "/data/data/com.test.test/dump.dex";
+                var dexfile = File.$new(dexsavepath);
+                if (!dexfile.exists()) {
+                    dexfile.createNewFile();
+                }
+                var fileoutputstream = FileOutputStream.$new(dexfile);
+                fileoutputstream.write(dexbytes);
+                fileoutputstream.flush();
+                fileoutputstream.close();
+                console.log("save dex success!");
+            } catch (e) {
+            }
+        })
+    })
+}
+```
+
+### 通过内部类对象得到外部类对象
+
+```js
+this.this$0.value;
+```
+
+### 系统调用hook
+
+```js
+function printNativeStack(context, name) {
+    var trace = Thread.backtrace(context, Backtracer.FUZZY).map(DebugSymbol.fromAddress).join("\n");
+    LogPrint("=============================" + name + " Native Stack start=======================");
+    LogPrint(trace);
+    LogPrint("=============================" + name + " Native Stack end=======================\r\n");
+}
+
+function LogPrint(log) {
+    var theDate = new Date();
+    var hour = theDate.getHours();
+    var minute = theDate.getMinutes();
+    var second = theDate.getSeconds();
+    var mSecond = theDate.getMilliseconds();
+
+    hour < 10 ? hour = "0" + hour : hour;
+    minute < 10 ? minute = "0" + minute : minute;
+    second < 10 ? second = "0" + second : second;
+    mSecond < 10 ? mSecond = "00" + mSecond : mSecond < 100 ? mSecond = "0" + mSecond : mSecond;
+    var time = hour + ":" + minute + ":" + second + ":" + mSecond;
+    var threadid = Process.getCurrentThreadId();
+    console.log("[" + time + "]" + "->threadid:" + threadid + "--" + log);
+
+}
+function hookaddr(addr) {
+    Interceptor.attach(addr, {
+        onEnter: function (args) {
+            this.arg0 = this.context.r0;
+            this.arg1 = this.context.r1;
+            this.arg2 = this.context.r2;
+            this.syscallnum = this.context.r7.toInt32();
+            if (this.syscallnum == 290) {
+                //sendto
+                LogPrint("this is a sendto!")
+
+            }
+            if (this.syscallnum == 292) {
+                //sendto
+                LogPrint("this is a __NR_recvfrom !")
+            }
+            console.log(Process.getCurrentThreadId() + "--go into " + addr + ",syscallnumm:" + this.syscallnum);
+            printNativeStack(this.context, "go into " + addr + ",syscallnum:" + this.syscallnum);
+        }, onLeave(retval) {
+            var arg0 = this.context.r0;
+            console.log(Process.getCurrentThreadId() + "--leave " + addr + ",retval:" + arg0);
+
+        }
+    })
+
+}
+
+function disassemble(addr, count) {
+    var start = addr;
+    for (var i = 0; i < count; i++) {
+        try {
+            // 解析内存中的二进制指令的方法
+            var ins = Instruction.parse(start);
+            LogPrint("addr:" + start + ",dis:" + ins.toString());
+            if (ins.toString() == 'svc #0') {
+                hookaddr(start);
+            }
+            start = ins.next;
+        } catch (e) {
+
+        }
+
+    }
+}
+
+function search(range) {
+    // 扫描内存
+    Memory.scanSync(range.base, range.size, '00 00 00 ef').forEach(function (match) {
+        LogPrint(JSON.stringify(match));
+        disassemble(match.address, 10);
+    })
+}
+
+// cat /proc
+/*
+	找pid
+	ps -ef|grep [name]
+	cat /proc/pid/maps
+*/
+function findsyscall() {
+    // 检索内存区间
+    Process.enumerateRanges('--x').forEach(function (range) {
+        if (JSON.stringify(range).indexOf('libnative-lib.so') >= 0) {
+            LogPrint(JSON.stringify(range));
+            search(range);
+        }
+    })
+}
+
+function hookjava() {
+    Java.perform(function () {
+        var Runtime = Java.use('java.lang.Runtime');
+        Runtime.nativeLoad.implementation = function (arg0, arg1, arg2) {
+            console.log(Process.getCurrentThreadId() + "--load so:" + arg0);
+            var result = this.nativeLoad(arg0, arg1, arg2);
+            if (arg0.indexOf('libnative-lib.so') >= 0) {
+                findsyscall();
+            }
+            return result;
+        }
+    })
+}
+
+function main() {
+    //hookjava();
+    findsyscall();
+}
+
+setImmediate(main);
+```
+
+
+
+### 不同版本中查找OutputStream.write函数
+
+```js
+function hookoutstreamwrite(classname) {
+    Java.perform(function () {
+        var Class = Java.use(classname);
+        // 判断类中是否有write函数
+        if (Class.write != null) {
+            // overloads 获取 write 方法的所有重载函数
+            Class.write.overloads.forEach(function (func) {
+                LogPrint("start hook->" + func.methodName + "---" + JSON.stringify(func.argumentTypes));
+                func.implementation = function () {
+                    LogPrint("go into " + func.methodName + "---" + JSON.stringify(func.argumentTypes));
+                    printJavaStack(func.methodName + "---" + JSON.stringify(func.argumentTypes));
+                    var result = func.apply(this, arguments);
+                    return result;
+                }
+            })
+        }
+    })
+}
+
+function enumerateclasses() {
+    Java.perform(function () {
+        // enumerateLoadedClassesSync 列举目标进程中所有已加载的类，并返回一个包含类名的数组。
+        Java.enumerateLoadedClassesSync().forEach(function (classname) {
+            if (classname.indexOf('OutputStream') >= 0) {
+                LogPrint(classname);
+                hookoutstreamwrite(classname);
+            }
+
+        })
+    })
+}
+
+function main() {
+    enumerateclasses();
+}
+
+setImmediate(main)
+```
+
+
 
 
 
