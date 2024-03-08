@@ -496,3 +496,151 @@ const void* ArtMethod::RegisterNative(const void* native_method, bool is_fast) {
 ndk\16.1.4479499\toolchains\arm-linux-androideabi-4.9\prebuilt\windows-x86_64\arm-linux-androideabi\bin\readelf -d xx.so
 ```
 
+
+
+## so加载执行流程(8.1.0)
+
+http://androidxref.com/8.1.0_r33/xref/libcore/ojluni/src/main/java/java/lang/System.java
+
+```java
+public static void loadLibrary(String libname) {
+	Runtime.getRuntime().loadLibrary0(VMStack.getCallingClassLoader(), libname);
+}
+
+synchronized void loadLibrary0(ClassLoader loader, String libname) {
+	String error = doLoad(filename, loader);
+}
+
+private String doLoad(String name, ClassLoader loader) {
+    return nativeLoad(name, loader, librarySearchPath);
+}
+
+private static native String nativeLoad(String filename, ClassLoader loader, String librarySearchPath);
+```
+
+
+
+```cpp
+Runtime_nativeLoad(JNIEnv* env, jclass ignored, jstring javaFilename, jobject javaLoader, jstring javaLibrarySearchPath) {
+	return JVM_NativeLoad(env, javaFilename, javaLoader, javaLibrarySearchPath);
+}
+
+JNIEXPORT jstring JVM_NativeLoad(JNIEnv* env, jstring javaFilename, jobject javaLoader, jstring javaLibrarySearchPath) {
+	bool success = vm->LoadNativeLibrary(env, filename.c_str(), javaLoader, javaLibrarySearchPath, &error_msg);
+}
+
+
+bool JavaVMExt::LoadNativeLibrary(JNIEnv* env, const std::string& path, jobject class_loader, jstring library_path, std::string* error_msg) {
+	void* handle = android::OpenNativeLibrary(env, runtime_->GetTargetSdkVersion(), path_str, class_loader, library_path, &needs_native_bridge, error_msg);
+    
+    //  dlsym(dlopen_handle_, name.c_str());
+    void* sym = library->FindSymbol("JNI_OnLoad", nullptr);
+}
+
+void* OpenNativeLibrary(JNIEnv* env, int32_t target_sdk_version, const char* path, jobject class_loader, jstring library_path, bool* needs_native_bridge, std::string* error_msg) {
+    if (class_loader == nullptr) {
+      *needs_native_bridge = false;
+      return dlopen(path, RTLD_NOW);
+    }
+    
+    if (ns.is_android_namespace()) {
+      android_dlextinfo extinfo;
+      extinfo.flags = ANDROID_DLEXT_USE_NAMESPACE;
+      extinfo.library_namespace = ns.get_android_ns();
+	
+      // hook点 , so加载
+      void* handle = android_dlopen_ext(path, RTLD_NOW, &extinfo);
+    }
+}
+
+```
+
+
+
+## UNiDBG
+
+https://github.com/zhkl0228/unidbg
+
+
+
+基础使用
+
+```java
+// 初始化
+AndroidEmulator emulator = AndroidEmulatorBuilder
+        .for32Bit()
+        .addBackendFactory(new DynarmicFactory(true))
+        .build();
+Memory memory = emulator.getMemory();
+LibraryResolver resolver = new AndroidResolver(23);
+memory.setLibraryResolver(resolver);
+
+VM vm = emulator.createDalvikVM(null);
+vm.setVerbose(true);
+DalvikModule dm = vm.loadLibrary(new File("unidbg-android/src/test/resources/example_binaries/armeabi-v7a/libnative-lib.so"), false);
+dm.callJNI_OnLoad(emulator);
+DvmClass dvmClass = vm.resolveClass("com/cq/example/MainActivity");
+
+
+// 调用静态方法
+DvmObject result =  dvmClass.callStaticJniMethodObject(emulator,"mdString(Ljava/lang/String;)Ljava/lang/String;","123456");
+System.out.println("result is => " + result.getValue());
+
+// 调用普通方法
+DvmObject<?> obj = ProxyDvmObject.createObject(vm, this);
+DvmObject result2  = obj.callJniMethodObject(emulator,"mdString(Ljava/lang/String;)Ljava/lang/String;","123456");
+System.out.println("result2 is => " + result2.getValue());
+
+```
+
+jni设置
+
+```
+extends AbstractJni
+
+vm.setJni(this);
+```
+
+
+
+环境补充
+
+```java
+@Override
+public DvmObject<?> getStaticObjectField(BaseVM vm, DvmClass dvmClass, String signature) {
+    switch (signature) {
+    	case "android/os/Build->FINGERPRINT:Ljava/lang/String;":
+        	return new StringObject(vm, "cq");
+	}
+}
+```
+
+
+
+hook
+
+```java
+        Dobby dobby = Dobby.getInstance(emulator);
+        // 2. 使用ida pro查看导出方法名，尝试hook
+        dobby.replace(module.findSymbolByName("_Z24system_getproperty_checkv"), new ReplaceCallback() { // 使用Dobby inline hook导出函数
+            @Override
+            // 3. contextk可以拿到参数，originFunction是原方法的地址
+            public HookStatus onCall(Emulator<?> emulator, HookContext context, long originFunction) {
+//                System.out.println("create_thread_check_traceid.onCall function address => 0x" + Long.toHexString(originFunction));
+                System.out.println("_Z24system_getproperty_checkv");
+//                return HookStatus.RET(emulator, originFunction);
+//                return null;
+                return HookStatus.LR(emulator, 0);
+            }
+            @Override
+
+            public void postCall(Emulator<?> emulator, HookContext context) {
+                System.out.println(" calling _Z14function_checkv .... return false");
+
+//                context.getIntArg(0) ;
+
+            }
+        }, false);
+
+```
+

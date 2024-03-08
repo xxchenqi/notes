@@ -155,36 +155,30 @@ https://frida.re/docs/javascript-api/
 ### Frida启动的两种模式以及区别
 
 ```
-frida启动有两种方式，分别为Spawn模式和 Attach 模式；
-区别：
-在 Spawn模式下，Frida 直接启动目标进程，然后在该进程中注入 Frida 的 Agent，也就是说，启动既注入；
-在 Attach 模式下，Frida 会依附到已经运行的目标进程上，并在该进程中注入 Agent；
+span 模式：frida 重新打开一个进程
+frida -U -f 包名 -l js路径 --no-pause
 
-Spawn 模式启动方式：frida -U {package} -l xxx.js
-Attach 模式启动方式：frida -U -l xxx.js -f {package}
-```
+attch 模式: 附加在当前打开的进程
+frida -U -l js路径 --no-pause
 
+区别就是一个带 -f 一个不带
 
-
-### 启动
-
-```
-通过USB启动
-frida -U pagkageName -l xx.js
-
-// -f 主动找到包名启动
-frida -U -f pagkageName -l xx.js --no-pause
-%resume
 
 通过host启动
 frida -H 192.168.71.96:8888 -f packageName -l x.js 
+通过USB启动
+frida -U pagkageName -l xx.js
 
-说明：
--f 重新启动程序，如果已经启动了，可以不需要加-f
-"--no-pause" 选项告诉 Frida 在注入代码后不要暂停目标应用程序的执行。
-执行 "%resume" 命令，以恢复目标应用程序的执行。
+
+每次frida（以Attach后Spawn去）启动调试后，程序自动暂停运行
+解决办法：手动输入%resume
+
+希望：frida调试开始后，自动继续运行，不要每次都输入%resume才继续运行
+解决办法：加--no-pause参数
 
 ```
+
+
 
 ### 常用选项
 
@@ -373,6 +367,33 @@ Java.enumerateLoadedClasses({
 
 
 
+### 动态加载dex,并调用方法
+
+```
+打包jar
+jar -cvf test.jar com/example/androiddemo/DecodeUtils.class
+
+打包dex
+dx --dex --output=test.dex test.jar
+```
+
+```js
+function hook_java() {
+	var testdex = Java.openClassFile("/data/local/tmp/test.dex");
+    Java.perform(function () {
+        testdex.load();
+        var DecodeUtils = Java.use("com.example.androiddemo.DecodeUtils");
+        console.log("DecodeUtils.decode_p:", DecodeUtils.decode_p());
+    });
+}
+```
+
+
+
+
+
+
+
 ## native hook
 
 http://demangler.com/
@@ -396,17 +417,24 @@ var module = Process.findModuleByAddress(addr)
 var symbols = Module.enumerateSymbols()
 ```
 
-### 查找指定模块地址
+
+
+### 查找指定模块基地址
 
 ```js
 var native_lib_addr = Module.findBaseAddress("libnative-lib.so");
 ```
 
+
+
 ### 获取模块中特定导出的地址
 
 ```js
+// PS:函数的地址可能和你实际看到的地址不一样，因为要加上基地址
 var add_addr = Module.findExportByName("libnative-lib.so", "_Z5r0addii");
 ```
+
+
 
 ### 函数hook
 
@@ -429,11 +457,15 @@ Interceptor.attach(add_addr, {
 });
 ```
 
+
+
 ### 函数构建
 
 ```js
 var NewStringUTF = new NativeFunction(NewStringUTF_addr,"pointer",["pointer","pointer"])
 ```
+
+
 
 ### 函数替换
 
@@ -457,6 +489,15 @@ var add_result = add(1,2);
 
 
 
+### 加载自定义so
+
+```js
+// 可脱离app，在其他app加载
+var module = Module.load("/data/local/tmp/xx.so")
+```
+
+
+
 ### JNI调用案例
 
 ```js
@@ -475,15 +516,29 @@ function hook_nativelib(){
 }
 ```
 
-### char*、jstring读取
+
+
+### char*、jstring
 
 ```js
-// char * 
-xxx.readCString();
+getEnv()：获取当前线程的包装器JNIEnv。如果当前线程未附加到 VM，则引发异常。
+tryGetEnv()：尝试获取当前线程的包装器JNIEnv。null如果当前线程未附加到 VM，则返回。
 
-// jstring
+
+
+// char * -> js string
+char_ptr.readCString();
+Memory.readCString(char_ptr);
+ptr(args[0]).readCString();
+
+// jstring_addr -> js string 
 Java.vm.getEnv().getStringUtfChars(jStringAddr,null).readCString()
+
+// 构造jstring
+Java.vm.getEnv().newStringUtf("123456")
 ```
+
+
 
 ### 调用栈打印
 
@@ -492,7 +547,9 @@ console.log('CCCryptorCreate called from:\n' + Thread.backtrace(this.context, Ba
         .map(DebugSymbol.fromAddress).join('\n') + '\n')
 ```
 
-### 打印所有so和函数
+
+
+### 枚举所有so和函数
 
 ```js
 function EnumerateAllExports(){
@@ -600,6 +657,8 @@ function hook_pthread(){
 }
 ```
 
+
+
 ### 文件操作案例
 
 ```js
@@ -627,6 +686,8 @@ function writeSomething(path,contents){
 }
 ```
 
+
+
 ### 函数导出到文件
 
 ```js
@@ -643,8 +704,6 @@ function EnumerateAllExports(){
     }
 }
 ```
-
-
 
 
 
@@ -967,6 +1026,17 @@ setImmediate(main)
 
 
 
+### Frida的文件操作
+
+```js
+function test() {
+    var file = new File("/sdcard/test.dat", "w");
+    file.write("cq");
+    file.flush();
+    file.close();
+}
+```
+
 
 
 
@@ -1041,6 +1111,27 @@ android sslpinning disable
 设置返回值
 android hooking set return_value ...(类名.方法名) ...(value)
 ```
+
+
+
+### 查看当前进程32/64位
+
+```
+frida
+
+另一种方式:
+查看zygote/zygote64的进程号
+ps -e | grep -i zygote
+
+查看父进程中fork的所有子进程
+ps -e | grep -i pid(zygote/zygote64的进程号)
+显示的所有进程就是64/32位
+
+手机cpu
+uname -a
+```
+
+
 
 ### 常用选项
 
@@ -1350,19 +1441,120 @@ Java.openClassFile("/data/local/tmp/xxx.dex").load();
 
 ## 其他
 
-Z3是微软研究院的定理证明器
+### Z3
+
+微软研究院的定理证明器
 
 https://github.com/Z3Prover/z3
 
 
 
-native_hook
+案例1
+
+```python
+from z3 import *
+from binascii import b2a_hex, a2b_hex
+
+def main():
+    s = Solver()
+
+    r = "0064736c707d6f510020646b73247c4d0068202b4159516700502a214d24675100"
+    r_result = bytearray(a2b_hex(r))
+    print(r_result)
+    for i in range(int(len(r_result) / 2)):
+        c = r_result[i]
+        r_result[i] = r_result[len(r_result) - i - 1]
+        r_result[len(r_result) - i - 1] = c
+
+    print(b2a_hex(r_result))
+
+    x = [BitVec("x%s" % i, 32) for i in range(len(r_result))]
+    for i in range(len(r_result)):
+        c = r_result[i]
+        print(i, hex(c))
+        s.add(((x[i] >> (i % 8)) ^ x[i]) == r_result[i])        #z3
+    if (s.check() == sat):
+        model = (s.model())
+        print(model)
+        flag = ""
+        for i in range(len(r_result)):
+            if (model[x[i]] != None):
+                flag += chr(model[x[i]].as_long().real)
+            else:
+                flag += " "
+        print('"' + flag + '"')
+        print(len(flag), len(r_result))
+
+
+if __name__ == "__main__":
+    main()
+
+
+'''
+    private String b(String str) {
+        char[] charArray = str.toCharArray();
+        for (int i = 0; i < charArray.length; i++) {
+            charArray[i] = (char) ((charArray[i] >> (i % 8)) ^ charArray[i]);
+        }
+        for (int i2 = 0; i2 < charArray.length / 2; i2++) {
+            char c = charArray[i2];
+            charArray[i2] = charArray[(charArray.length - i2) - 1];
+            charArray[(charArray.length - i2) - 1] = c;
+        }
+        return new String(charArray);
+    }
+'''
+```
+
+
+
+案例2:
+
+```python
+from z3 import *
+
+def main():
+    s = Solver()
+
+    result = "EoPAoY62@ElRD"
+    key    = "W3_arE_whO_we_ARE"
+    index_key = 2016
+
+    x = [BitVec("x%s" % i, 8) for i in range(len(result))]
+
+    for i in range(len(result)):
+        v11 = None
+        if (i % 3 == 1):
+            index_key = (index_key + 5) % 16
+            v11 = key[index_key + 1]
+        elif (i % 3 == 2):
+            index_key = (index_key + 7) % 15
+            v11 = key[index_key + 2]
+        else:
+            index_key = (index_key + 3) % 13
+            v11 = key[index_key + 3]        
+        s.add((x[i]) == ord(v11) ^ ord(result[i]))
+        
+    if (s.check() == sat):
+        model = (s.model())
+        flag = ""
+        for i in range(len(result)):
+            flag += chr(model[x[i]].as_long().real)
+        print('"' + flag + '"')
+
+if __name__ == "__main__":
+    main()
+```
+
+
+
+### native_hook
 
 https://github.com/lasting-yang/frida_hook_libart
 
 
 
-jnitrace
+### jnitrace
 
 https://github.com/chame1eon/jnitrace
 
@@ -1370,50 +1562,208 @@ https://github.com/chame1eon/jnitrace
 
 
 
+### 其他案例
+
+#### 函数在哪些so
+
 ```
-查看so函数地址
-memory list exports libc.so --json /root/Desktop/libc.json
+libart.so
+GetStringUTFChars
+FindClass
+GetStaticFieldID
+...
+
+libc.so
+strcmp
+fopen
+...
+
+
 ```
 
+
+
+#### ollvm字符串混淆
+
+加密字符串打印
+
 ```js
-function hook_libc() {
-	var strcmp_addr = Module.findExportByName("libc.so", "strcmp");
-    if (strcmp_addr) {
-        Java.perform(function() {
-            Interceptor.attach(strcmp_addr, {
-                onEnter: function(args) {
-                    var str1 = ptr(args[0]).readCString();
-                    var str2 = ptr(args[0]).readCString();
-                },
-                onLeave:function(retval) {
-                    
-                }
-            })
-        })
+function hook_native() {
+    var base_hello_jni = Module.findBaseAddress("libhello-jni.so");
+    if (base_hello_jni) {
+        //ollvm默认的字符串混淆，静态的时候没法看见字符串
+        //执行起来之后，先调用.init_array里面的函数来解密字符串
+        //解密完之后，内存中的字符串就是明文状态了。
+        
+        // 此处是加密字符串的数据地址
+        var addr_37070 = base_hello_jni.add(0x37070);
+        console.log("addr_37070:", ptr(addr_37070).readCString());
+
+        var addr_37080 = base_hello_jni.add(0x37080);
+        console.log("addr_37080:", ptr(addr_37080).readCString());
     }
 }
+
+function print_string(addr) {
+    var base_hello_jni = Module.findBaseAddress("libhello-jni.so");
+    var addr_str = base_hello_jni.add(addr);
+    console.log("addr:", addr, " ", ptr(addr_str).readCString());
+}
+
+function main() {
+    hook_native();
+}
+
+setImmediate(main);
 ```
+
+
 
 
 
 ```js
-function write_reg2(){
-    var fopen_addrs = Module.findExportByName("libc.so", "fopen");
-    var fputs_addrs = Module.findExportByName("libc.so", "fputs");
-    var fclose_addrs = Module.findExportByName("libc.so", "fclose");
+function hook_libart() {
+    var module_libart = Process.findModuleByName("libart.so");
+    var symbols = module_libart.enumerateSymbols();    
+    var addr_RegisterNatives = null;        
 
-	var fopen = new NativeFunction(fopen_addrs, "pointer",["pointer","pointer"]);
-    var fopen = new NativeFunction(fputs_addrs, "int",["pointer","pointer"]);
-    var fopen = new NativeFunction(fclose_addrs, "int",["pointer"]);
-    
-    var filename = Memory.allocUtf8String("/sdcard/req.dat");
-	var file_mode = Memory.allocUtf8String("w+");
-	var file = fopen(filename, file_mode);
-    var contents = Memory.allocUtf8String("xxxxx");
-    var ret = fputs(contents, file);
-    fclose(file);
+    for (var i = 0; i < symbols.length; i++) {
+        var name = symbols[i].name;
+        if (name.indexOf("art") >= 0) {
+            if ((name.indexOf("CheckJNI") == -1) && (name.indexOf("JNI") >= 0)) {
+                if (name.indexOf("RegisterNatives") >= 0) {
+                    console.log(name);
+                    addr_RegisterNatives = symbols[i].address;
+                }
+            }
+        }
+    }
+
+    if (addr_RegisterNatives) {
+
+        /*
+        
+        jniEnv->RegisterNatives(mainActivityClass, methods, sizeof(methods) / sizeof(JNINativeMethod));
+        
+        static const JNINativeMethod methods[] = {
+        	{"dynamicJavaMethod01", "()V", (void *) dynamicJavaMethod01}
+		};
+        */
+        
+        
+        Interceptor.attach(addr_RegisterNatives, {
+            onEnter: function (args) {
+                console.log("addr_RegisterNatives:", hexdump(args[2]));
+                console.log("addr_RegisterNatives name:", ptr(args[2]).readPointer().readCString())
+                console.log("addr_RegisterNatives sig:", ptr(args[2]).add(Process.pointerSize).readPointer().readCString());
+            }, onLeave: function (retval) {
+
+            }
+        });
+    }
 }
+
+
+//inline 在 arm32中不太稳定,在arm64上比较稳定
+function inline_hook() {
+    // 直接hook可能hook不成功，因为so还没加载
+    var base_hello_jni = Module.findBaseAddress("libhello-jni.so");
+    console.log("base_hello_jni:", base_hello_jni);
+    if (base_hello_jni) {
+        console.log(base_hello_jni);
+        //inline hook
+        // .text:0000000000007318 AD 61 44 39                   LDRB            W13, [X13,#0x118]
+		// .text:000000000000731C AD 01 0E 4A                   EOR             W13, W13, W14
+        // .text:0000000000007320 6D 69 29 38                   STRB            W13, [X11,X9]
+        var addr_07320 = base_hello_jni.add(0x07320);
+        Interceptor.attach(addr_07320, {
+            onEnter: function (args) {
+                // 结果复制到010里面查看
+                console.log("addr_07320 x13:", this.context.x13);
+            }, onLeave: function (retval) {
+            }
+        });
+    }
+}
+
+
+function hook_dlopen() {
+    var dlopen = Module.findExportByName(null, "dlopen");
+    Interceptor.attach(dlopen, {
+        onEnter: function (args) {
+            this.call_hook = false;
+            var so_name = ptr(args[0]).readCString();
+            if (so_name.indexOf("libhello-jni.so") >= 0) {
+                console.log("dlopen:", ptr(args[0]).readCString());
+                this.call_hook = true;
+            }
+
+        }, onLeave: function (retval) {
+            if (this.call_hook) {
+                inline_hook();
+            }
+        }
+    });
+    // 高版本Android系统使用android_dlopen_ext
+    var android_dlopen_ext = Module.findExportByName(null, "android_dlopen_ext");
+    Interceptor.attach(android_dlopen_ext, {
+        onEnter: function (args) {
+            this.call_hook = false;
+            var so_name = ptr(args[0]).readCString();
+            if (so_name.indexOf("libhello-jni.so") >= 0) {
+                console.log("android_dlopen_ext:", ptr(args[0]).readCString());
+                this.call_hook = true;
+            }
+
+        }, onLeave: function (retval) {
+            if (this.call_hook) {
+                inline_hook();
+            }
+        }
+    });
+}
+
+function main() {
+    hook_dlopen();
+}
+
+setImmediate(main);
 ```
 
 
+
+#### 区分指令集
+
+```
+IDA中打开opcode设置为4
+
+每个指令都是4个字节就是arm指令集
+如果指令是2个字节的就是thumb指令，hook时需要+1
+```
+
+
+
+#### 其他常用命令
+
+```
+dexdump
+从内存中搜索dex字符串
+打开动态库hook
+
+hook dlopen，打开库时判断文件头是否是dex字符串
+
+excute 有漏网之鱼，搞不定动态加载dex
+
+dexfile 脱下来了
+
+
+nm libart.so
+
+jnitrace
+
+objdump -T xx.so
+
+c++filt
+
+```
 
