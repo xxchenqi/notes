@@ -331,3 +331,21 @@ reboot
 
 
 
+
+
+## 各资源版本
+
+```
+Nexus 5 (GSM/LTE) 专用“hammerhead”
+4.4~6.0.1
+
+Nexus 5X 专用“bullhead”
+6.0.0~8.1.0
+
+Pixel 专用“sailfish”
+7.1.0~10.0.0
+
+Pixel 2 专用“walleye”
+8.0.0~11.0.0
+```
+
