@@ -38,10 +38,10 @@ SystemServer：创建各种系统服务（引导、核心、其他服务）
 
 创建Launcher ...
 
-![image-20210210221849779](C:\Users\NING MEI\Desktop\md笔记\慕课\FrameWork.assets\image-20210210221849779.png)
+![image-20210210221849779](.\assets\image-20210210221849779.png)
 
-![image-20210210221929738](C:\Users\NING MEI\Desktop\md笔记\慕课\FrameWork.assets\image-20210210221929738.png)
+![image-20210210221929738](.\assets\image-20210210221929738.png)
 
-![image-20210210221941297](C:\Users\NING MEI\Desktop\md笔记\慕课\FrameWork.assets\image-20210210221941297.png)
+![image-20210210221941297](.\assets\image-20210210221941297.png)
 
-![image-20210210225017977](C:\Users\NING MEI\Desktop\md笔记\慕课\FrameWork.assets\image-20210210225017977.png)
+![image-20210210225017977](.\assets\image-20210210225017977.png)
