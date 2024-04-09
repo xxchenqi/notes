@@ -1,6 +1,6 @@
 # Eventbus原理解析
 
-![](C:\Users\Administrator\Desktop\md笔记\框架解析\eventbus原理.png)
+![](.\assets\eventbus原理.png)
 
 
 

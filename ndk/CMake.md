@@ -140,3 +140,32 @@ target_link_libraries( # native-lib是我们的总库
 
 
 
+其他参考配置
+
+```
+cmake_minimum_required(VERSION 3.10.2)
+
+# 设置项目名称
+project(noise)
+
+
+# 批量导入所有源文件 , allCPP是变量名
+file(GLOB allCPP
+        webrtc_ns/*.c
+        */*.c
+        speech_NS.cpp
+        )
+
+
+#生成动态/静态库
+add_library(
+        noise # 库名称 libnative-lib.so
+        SHARED # 动态库
+        ${allCPP} #上述定义的变量，如果不定义变量，就要写好多文件
+)
+
+# 链接库
+target_link_libraries(noise log)
+
+```
+

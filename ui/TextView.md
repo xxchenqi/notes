@@ -2,7 +2,7 @@
 
 ## 基准线
 
-![](../res/textview_baseline.png)
+![](./assets/textview_baseline.png)
 
 ```java
 // 获取基线  baseLine

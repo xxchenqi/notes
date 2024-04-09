@@ -69,5 +69,6 @@ du -h *
 ```
 grep -ril "xxxActivity" *
 tree -NCfhl | grep xxx
+find . -name "xxx"
 ```
 

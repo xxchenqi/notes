@@ -230,5 +230,5 @@ static class ObserverWithState {
 
 
 
-![](../res/lifecycle.png)
+![](./assets/lifecycle.png)
 

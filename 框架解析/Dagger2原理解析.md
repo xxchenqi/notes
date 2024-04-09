@@ -1,6 +1,6 @@
 # Dagger2原理解析
 
-![](..\res\Dagger2.png)
+![](.\assets\Dagger2.png)
 
 
 
