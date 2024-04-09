@@ -15,14 +15,18 @@ X-Android-APK-Signed: 2
 查看签名：
 
 ```
-keytool -list -printcert -jarfile <path>
+keytool -list -printcert -jarfile <path apk>
 
-apksigner verify -v --print-certs <path>
+apksigner verify -v --print-certs <path apk>
+
+keytool -v -list -keystore <path jks> -storepass <password>
 ```
 
 
 
 
+
+# VasDolly
 
 查看渠道
 
@@ -35,6 +39,7 @@ java -jar VasDolly.jar get -c <path>
 ```
 java -jar VasDolly.jar put -c "zhihuiyun" <inapk> <outapk>
 ```
+
 
 
 
