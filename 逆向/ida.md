@@ -660,6 +660,20 @@ cfg/hexrays.cfg 配置文件可以修改最大反编译函数大小配置项
 在环境变量里添加 PYTHONPATH 值为 ida7.7\python\3 完整路径
 ```
 
+?
+
+```
+vscode中setting.json
+
+{
+	"python.pythonPath":"xxx/python2.7",
+	"python.autoComplete.extraPaths":["/XXX/IDA/python"]
+
+}
+```
+
+
+
 ### 常用命令
 
 ```

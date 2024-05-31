@@ -349,3 +349,62 @@ Pixel 2 专用“walleye”
 8.0.0~11.0.0
 ```
 
+
+
+
+
+## 刷机
+
+### Lenovo_Tab_K10_TB-X6C6F_MT6765
+
+相关文章
+
+https://zhuanlan.zhihu.com/p/367773904
+
+
+
+设备：Lenovo_Tab_K10_TB-X6C6F_MT6765
+
+rom下载：https://mirrors.lolinet.com/firmware/lenowow/Tab_K10/TB-X6C6F/
+
+刷机工具:SP_Flash_Tool_v5.2316_Win
+
+问题：
+
+此设备是学校的管控设备，要求刷到原生系统
+
+因为尝试了各种rom，都刷机失败，然后选择了Format All + Download，导致无法正常开机，
+
+只进入了深度刷机模式，也就是在设备管理器中能看到的MTK USB Port (COM4)
+
+根据文章提示，选择了mtk_bypass,报错Insecure device, sending payload using send_da... [ERROR] FOUND SEND_DWORD
+
+然后继续刷机提示同样问题
+
+error:status_sec_img_type_mismatch(0XC002002A)
+
+Verified boot is enabled. Please download signed image(lenovoraw-verified.img) ordisable verified boot.
+
+随后换了种方式，哪个文件报错，就取消选择。
+
+lenovoraw、lenovocust、gz_a这3个文件没有进行刷入。最终刷机成功，正常开机。
+
+
+其他报错：
+
+1.error:status_brom_cmd_send_da_fail(0XC0060003)
+
+音量+-、电源一起按进入正确的模式 / 或者在点击下Download
+
+
+
+2.烧录工具点击Download,插上设备，提示设备驱动无法识别，按住音量+-、电源一起按，就正常了
+
+
+
+总结：mtk_bypass可能不需要用到，应该直接取消勾选lenovoraw、lenovocust、gz_a这3个文件就行了。(不太确定)
+
+
+
+
+
