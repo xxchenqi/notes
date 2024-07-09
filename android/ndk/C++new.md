@@ -1895,3 +1895,33 @@ C++中的类在编译时编译器会进行权限的检査，如private、protect
 
 
 
+**虚函数**
+
+```cpp
+class Base {
+public:
+
+    Base(int a, char p) : a(a), b(p) {
+    }
+
+private:
+    int a;//arm64 偏移为8 arm32 偏移为4
+    char b;
+
+    virtual void f() {
+    };
+
+    virtual void g() {
+    };
+
+    virtual void h() {
+    };
+};
+
+```
+
+32位模式下:sizeof(Base的对象)=12，64位模式下sizeof(Base的对象)=16
+
+c++类中有虚函数的时候有一个指向虚函数的指针(vptr)，在32位系统分配指针大小为4字节。类继承自多个基类的时候可能有多个虚函数
+
+表指针，可能会占据多个内存空间。此时自然也可以通过虚函数表指针完成对类中虚函数的调用
