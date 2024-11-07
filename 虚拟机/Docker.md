@@ -301,7 +301,7 @@ docker search tomcat
 2.拉取tomcat镜像
 
 ```
-docker pu11 tomcat
+docker pull tomcat
 ```
 
 3.创建容器，设置端口映射、目录映射
@@ -322,6 +322,28 @@ tomcat
 参数说明:
 -p 8080:8080: 将容器的8080端口映射到主机的8080端口
 -v $PWD:/usr/local/tomcat/webapps: 将主机中当前目录挂载到容器的webapps
+
+
+
+**配置Tomcat直接显示目录结构和文件列表**
+
+\conf\web.xml 
+
+把listings选项改为true就可以了。 另外把<welcome-file>的配置去掉
+
+
+
+
+
+**tomcat10访问404**
+
+将webapps.dist中复制到webapps，删除webapps.dist
+
+
+
+
+
+
 
 
 
@@ -710,7 +732,6 @@ http://mirrors.tuna.tsinghua.edu.cn/jenkins/updates/update-center.json
 (1)ssh-keygen -t rsa
 (2)生成known_host
 git ls-remote -h [sshUrl] HEAD
-git ls-remote -h git@gitlab.sherc.net:chenqi/DigitalTeaching.git HEAD
 
 3.将公钥存到gitlab
 4.将私钥存到jenkins
@@ -718,6 +739,8 @@ git ls-remote -h git@gitlab.sherc.net:chenqi/DigitalTeaching.git HEAD
 (2)描述: gitlab-auth-ssh
 (3)username: 随便写
 (4)将私钥放进去
+粘贴需要把 -----BEGIN OPENSSH PRIVATE KEY----- 都粘贴进去
+
 
 解释：
 Q:gitlab中配置了自己电脑的公钥，jenkins中配置了自己电脑的私钥，那为什么还需要在jenkins服务器中在创建私钥呢？
@@ -747,7 +770,7 @@ sdk\cmdline-tools\latest\...
 必须加latest
 
 配置环境变量
-cd ~/.bashrc
+cd ~
 vim ~/.bashrc
 export ANDROID_HOME="/var/jenkins_home/sdk/AndroidSdk"
 export PATH="$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
