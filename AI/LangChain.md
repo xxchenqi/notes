@@ -83,3 +83,80 @@ LangChain 的 `Model` 模块把底层的 API 差异、请求格式、token 管�
 ## OutputParser
 
 在 **LangChain** 中，`OutputParser` 是一个 **用于解析大模型输出的模块**，它能把 LLM 返回的“自由文本”转为你想要的 **结构化数据**，比如字典、列表、JSON、对象、数值等。
+
+
+
+## LCEL表达式
+
+LangChain Expression Language
+
+例子
+
+```python
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI
+from langchain_core.output_parsers import StrOutputParser
+
+prompt = ChatPromptTemplate.from_template("你是谁？用 {style} 风格回答")
+model = ChatOpenAI()
+parser = StrOutputParser()
+
+chain = prompt | model | parser  # LCEL 表达式
+```
+
+📌 总结：
+
+- **LCEL 是 LangChain 的表达式语言**
+- 通过 `|` 运算符组合组件，类似 Unix 管道
+- 能让链式开发更清晰、简洁、声明式
+- 背后依赖了 `Runnable` 协议，每个模块都实现了 `invoke()` 等方法
+
+解决的问题——**在构建多步骤 LLM 应用时的代码混乱、结构不清、调试困难等一系列“组合地狱”问题。**
+
+  
+
+## Runnable
+
+`RunnableParallel` 是什么？
+
+✅ 它的作用：
+
+**并行执行多个链**，将同一个输入送入多个子链，最后输出一个字典，包含每个子链的结果。
+
+✅ 用途：
+
+当你需要**多个模型或任务并行执行**时使用，比如：
+
+- 同时翻译、总结、提问
+- 多种 LLM 回答进行对比
+- 多工具并发调用
+
+
+
+`RunnablePassthrough` 是什么？
+
+✅ 它的作用：
+
+**原样返回输入值，不做任何处理。**
+
+✅ 用途：
+
+- 占位符（链还没写完，先打个桩）
+- 在调试阶段保留原始输入
+- 组合链时对部分字段不处理
+- 来简化 invoke 的调用流程
+
+
+
+| 项目     | `RunnableParallel`       | `RunnablePassthrough`    |
+| -------- | ------------------------ | ------------------------ |
+| 功能     | 并行执行多个链           | 什么都不做，直接返回输入 |
+| 输入     | 一个输入                 | 任意输入                 |
+| 输出     | 字典，包含每条子链输出   | 与输入相同               |
+| 应用场景 | 多任务、对比、多模态处理 | 占位、调试、保留输入     |
+
+
+
+## Callback
+
+Callback 是 LangChain 提供的回调机制，允许我们在 LLM 应用程序的各个阶段使用 hook。
