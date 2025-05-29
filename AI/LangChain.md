@@ -157,6 +157,88 @@ chain = prompt | model | parser  # LCEL 表达式
 
 
 
+
+
+### lambda、itemgetter解释
+
+```python
+chain = {
+            "context": lambda x: retrieval(x["query"]),
+            "query": itemgetter("query"),
+        } | prompt | llm | parser
+```
+
+```python
+lambda x: retrieval(x["query"]) 解析
+
+# 假设你调用：
+chain.invoke({"query": "你好，我是谁？"})
+#那传入的 x 就是：{"query": "你好，我是谁？"}
+lambda x: retrieval(x["query"]) 就等于 retrieval("你好，我是谁？")
+```
+
+```python
+itemgetter("query") 解析
+itemgetter是来自 operator 模块的一个工具函数：
+itemgetter("query") 会返回一个函数，效果和这个一样： lambda x: x["query"]
+
+也就是从输入字典中取出 "query" 字段的值。
+```
+
+```python
+你调用 chain.invoke({"query": "你好"})，LangChain 会把这个输入映射为：
+{
+    "context": retrieval("你好"), 
+    "query": "你好"
+}
+```
+
+
+
+
+
+### RunnablePassthrough解析
+
+```python
+RunnablePassthrough.assign(
+    context=lambda x: retrieval(x["query"])
+)
+为什么能替换
+{
+    "context": lambda x: retrieval(x["query"]),
+    "query": itemgetter("query"),
+}
+
+
+输入：{"query": "你好"}
+输出：保留原输入，加一个新字段
+
+```
+
+```python
+chain = {"query": RunnablePassthrough()} | prompt | llm | StrOutputParser()
+
+"query" 字段的内容会被原样传递下去，没有任何改变。
+```
+
+
+
+### RunnableLambda
+
+把普通函数变成 LCEL 链条组件
+
+```python
+RunnableLambda(memory.load_memory_variables) | itemgetter("history")
+
+# 你不能直接写：
+chain = memory.load_memory_variables | itemgetter("history")
+# 因为 load_memory_variables 是一个普通函数，不支持 | 运算符（LCEL 语法）。
+```
+
+
+
+
+
 ## Callback
 
 Callback 是 LangChain 提供的回调机制，允许我们在 LLM 应用程序的各个阶段使用 hook。
