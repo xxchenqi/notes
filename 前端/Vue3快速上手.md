@@ -539,7 +539,7 @@ function test(){
   }
 </script>
 ```
-## 3.8. 【computed】(双向绑定)
+## 3.8. 【computed】
 
 作用：根据已有数据计算出新数据（和`Vue2`中的`computed`作用一致）。
 
@@ -596,7 +596,7 @@ function test(){
 > 4. 一个包含上述内容的数组。
 
 我们在`Vue3`中使用`watch`的时候，通常会遇到以下几种情况：
-### * 情况一（包含停止监视）
+### * 情况一
 监视`ref`定义的【基本类型】数据：直接写数据名即可，监视的是其`value`值的改变。
 
 ```vue
@@ -845,6 +845,22 @@ function test(){
 
 </script>
 ```
+### 常用选项
+
+deep: true：监听一个对象或数组中的 **嵌套属性变化** 时，必须加上 `deep: true`，否则只监听第一层。
+
+`immediate: true`：立即触发一次回调（在侦听开始时），不会等到值变才触发。
+
+`flush: 'pre' | 'post' | 'sync'`：
+
+控制回调执行的时机（只在异步副作用中有用）：
+
+- `'pre'`（默认）：在组件更新前调用（适合绝大多数情况）
+- `'post'`：在组件 DOM 更新后调用
+- `'sync'`：同步执行（注意：可能会影响性能）
+
+
+
 ## 3.10. 【watchEffect】
 
 * 官网：立即运行一个函数，同时响应式地追踪其依赖，并在依赖更改时重新执行该函数。
@@ -1795,7 +1811,7 @@ app.mount('#app')
 ## 5.5.【storeToRefs】
 
 - 借助`storeToRefs`将`store`中的数据转为`ref`对象，方便在模板中使用。
-- 注意：`pinia`提供的`storeToRefs`只会将数据做转换，而`Vue`的`toRefs`会转换`store`中数据。
+- 注意：`pinia`提供的`storeToRefs`只会将数据做转换，不会对方法进行ref包裹，而`Vue`的`toRefs`会转换`store`中数据。
 
 ```vue
 <template>
@@ -2638,3 +2654,120 @@ const Child = defineAsyncComponent(()=>import('./Child.vue'))
 - 移除了`$children` 实例 `propert`。
 
   ......
+
+
+
+
+
+---
+
+
+
+## 指令
+
+
+
+| 指令          | 作用说明                                               |
+| ------------- | ------------------------------------------------------ |
+| `v-bind`      | 绑定属性，如 `:src="url"` 是 `v-bind:src="url"` 的简写 |
+| `v-model`     | 双向数据绑定，用于表单、组件等                         |
+| `v-model:xxx` | 自定义 prop 的双向绑定（Vue 3 新增）                   |
+| `v-if`        | 条件渲染（true 时渲染）                                |
+| `v-else-if`   | `v-if` 的 else-if 分支                                 |
+| `v-else`      | `v-if` 的 else 分支                                    |
+| `v-show`      | 根据布尔值显示/隐藏元素（不会销毁 DOM）                |
+| `v-for`       | 列表渲染，循环数组或对象                               |
+| `v-on`        | 事件绑定，`@click="fn"` 是 `v-on:click="fn"` 的简写    |
+| `v-slot`      | 插槽插值，`<template v-slot:name>`                     |
+| `v-pre`       | 跳过编译，原样输出内容                                 |
+| `v-cloak`     | 防止闪烁，和 `v-cloak` CSS 搭配使用                    |
+| `v-once`      | 只渲染一次，之后不再更新                               |
+| `v-memo`      | 缓存静态节点，性能优化（Vue 3.2+ 新增）                |
+| `v-text`      | 设置文本内容（替代 {{}}）                              |
+| `v-html`      | 设置 HTML 内容（有 XSS 风险，慎用）                    |
+
+
+
+自定义指令
+
+```ts
+app.directive('focus', {
+  mounted(el) {
+    el.focus();
+  }
+});
+```
+
+然后在模板中使用：
+
+```
+<input v-focus />
+```
+
+
+
+
+
+
+
+## 常见 `@事件` 列表
+
+在 Vue 3 中，所有以 `@` 开头的语法实际上是 `v-on:` 的缩写，用于**事件监听**。`@事件名="方法名"` 等价于 `v-on:事件名="方法名"`。
+
+| 简写 (`@`)     | 全写 (`v-on:`)     | 说明                            |
+| -------------- | ------------------ | ------------------------------- |
+| `@click`       | `v-on:click`       | 点击事件                        |
+| `@dblclick`    | `v-on:dblclick`    | 双击事件                        |
+| `@input`       | `v-on:input`       | 输入事件（input、textarea）     |
+| `@change`      | `v-on:change`      | 内容变化（失焦后触发）          |
+| `@submit`      | `v-on:submit`      | 表单提交事件                    |
+| `@focus`       | `v-on:focus`       | 获得焦点                        |
+| `@blur`        | `v-on:blur`        | 失去焦点                        |
+| `@keydown`     | `v-on:keydown`     | 键盘按下                        |
+| `@keyup`       | `v-on:keyup`       | 键盘抬起                        |
+| `@keypress`    | `v-on:keypress`    | 键盘按下（已废弃）              |
+| `@mouseenter`  | `v-on:mouseenter`  | 鼠标移入                        |
+| `@mouseleave`  | `v-on:mouseleave`  | 鼠标移出                        |
+| `@mouseover`   | `v-on:mouseover`   | 鼠标悬停                        |
+| `@mouseout`    | `v-on:mouseout`    | 鼠标移出                        |
+| `@contextmenu` | `v-on:contextmenu` | 右键菜单事件                    |
+| `@scroll`      | `v-on:scroll`      | 滚动事件                        |
+| `@drag`        | `v-on:drag`        | 拖拽事件                        |
+| `@drop`        | `v-on:drop`        | 拖放事件                        |
+| `@resize`      | `v-on:resize`      | 改变尺寸事件（一般绑定 window） |
+
+
+
+## 事件修饰符
+
+| 写法              | 作用说明                                     |
+| ----------------- | -------------------------------------------- |
+| `@click.stop`     | 阻止事件冒泡（等价于 `e.stopPropagation()`） |
+| `@click.prevent`  | 阻止默认行为（如 `<a>` 跳转）                |
+| `@keyup.enter`    | 只在按下 Enter 键时触发                      |
+| `@submit.prevent` | 阻止表单提交刷新页面                         |
+| `@click.once`     | 事件只触发一次                               |
+| `@click.capture`  | 使用事件捕获模式                             |
+| `@click.self`     | 只在绑定元素本身点击时触发                   |
+
+
+
+
+
+自定义事件（用于组件间通信）
+
+如果你在自定义组件中触发事件：
+
+```
+<!-- 子组件 -->
+<template>
+  <button @click="$emit('my-event', someData)">点击</button>
+</template>
+```
+
+你在父组件中用 `@my-event` 监听：
+
+```
+<MyButton @my-event="handleCustom" />
+```
+
