@@ -1637,6 +1637,15 @@ console.log(router.replace)
 
 # 5. pinia 
 
+> **Pinia 是 Vue 官方推荐的、轻量、模块化、类型友好、组合式 API 的状态管理库。**
+
+## 📘 示例场景
+
+- 管理登录用户信息
+- 管理购物车数据
+- 共享多个组件间的状态（比如全局弹窗开关）
+- 替代 Vuex 或旧的 eventBus 模式
+
 ## 5.1【准备一个效果】
 
 <img src="./images/pinia_example.gif" alt="pinia_example" style="zoom:30%;border:3px solid" /> 
@@ -2413,6 +2422,32 @@ function sendToy(){
 
 
 
+
+
+
+
+### 其他
+
+```vue
+父组件(这里的a就是  {x="111" y="222"} 的对象)
+<template v-slot="a">
+  <span>{{ a }}</span>
+</template>
+
+子组件 将x和y打包成对象传递给父组件的a
+<slot x="111" y="222"></slot>
+
+
+```
+
+
+
+
+
+
+
+
+
 # 7. 其它 API
 
 ## 7.1.【shallowRef 与 shallowReactive 】
@@ -2771,3 +2806,29 @@ app.directive('focus', {
 <MyButton @my-event="handleCustom" />
 ```
 
+
+
+
+
+## 常用的 HTML 属性 + Vue 中的绑定方式对照表
+
+| HTML 属性     | Vue 中绑定写法                  | 说明                         |
+| ------------- | ------------------------------- | ---------------------------- |
+| `href`        | `:href="linkUrl"`               | 动态绑定超链接地址           |
+| `src`         | `:src="imgUrl"`                 | 图片地址                     |
+| `alt`         | `:alt="imgDesc"`                | 图片说明文字                 |
+| `title`       | `:title="tip"`                  | 鼠标悬浮提示                 |
+| `class`       | `:class="{ active: isActive }"` | 动态类名                     |
+| `style`       | `:style="{ color: textColor }"` | 动态样式                     |
+| `disabled`    | `:disabled="isDisabled"`        | 禁用状态（布尔值）           |
+| `value`       | `:value="inputValue"`           | 表单初始值                   |
+| `checked`     | `:checked="isChecked"`          | 是否勾选                     |
+| `type`        | `:type="inputType"`             | 输入框类型，如 text/password |
+| `placeholder` | `:placeholder="hint"`           | 提示语                       |
+| `readonly`    | `:readonly="isReadonly"`        | 是否只读                     |
+| `maxlength`   | `:maxlength="maxLen"`           | 最大长度                     |
+| `key`         | `:key="item.id"`                | Vue diff 算法关键属性        |
+| `ref`         | `:ref="myRef"`                  | 获取组件/元素引用            |
+| `is`          | `:is="comp"`                    | 动态组件渲染（特殊）         |
+| `for`         | `:for="labelId"`                | 与 `<label>` 搭配            |
+| `id`          | `:id="domId"`                   | DOM 节点 ID                  |
